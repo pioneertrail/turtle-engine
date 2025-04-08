@@ -1,0 +1,88 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {
+              name: "Windows MSVC",
+              os: windows-latest,
+              build_type: "Release",
+              cc: "cl",
+              cxx: "cl",
+              environment_script: "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
+            }
+          - {
+              name: "Ubuntu GCC",
+              os: ubuntu-latest,
+              build_type: "Release",
+              cc: "gcc",
+              cxx: "g++"
+            }
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install dependencies (Ubuntu)
+      if: matrix.config.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libglew-dev \
+          libglfw3-dev \
+          libglm-dev \
+          xorg-dev
+
+    - name: Install dependencies (Windows)
+      if: matrix.config.os == 'windows-latest'
+      run: |
+        vcpkg install glew:x64-windows
+        vcpkg install glfw3:x64-windows
+        vcpkg install glm:x64-windows
+        vcpkg integrate install
+
+    - name: Configure CMake
+      shell: bash
+      run: |
+        cmake -B build \
+              -DCMAKE_BUILD_TYPE=${{ matrix.config.build_type }} \
+              -DCMAKE_C_COMPILER=${{ matrix.config.cc }} \
+              -DCMAKE_CXX_COMPILER=${{ matrix.config.cxx }}
+
+    - name: Build
+      shell: bash
+      run: cmake --build build --config ${{ matrix.config.build_type }}
+
+    - name: Test
+      working-directory: build
+      shell: bash
+      run: ctest -C ${{ matrix.config.build_type }} --output-on-failure
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install Doxygen
+      run: sudo apt-get install -y doxygen graphviz
+
+    - name: Generate Documentation
+      run: |
+        doxygen Doxyfile
+
+    - name: Deploy Documentation
+      if: github.ref == 'refs/heads/main'
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs/html 

@@ -1,0 +1,10 @@
+^C:\USERS\HYDRAPONY\1337 H4X0R\TMNT AI\CMAKEFILES\15F50E719EDC19F45609A0A815B3FF6D\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Users/HydraPony/1337 h4x0r/TMNT AI" "-BC:/Users/HydraPony/1337 h4x0r/TMNT AI" --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file "C:/Users/HydraPony/1337 h4x0r/TMNT AI/TurtleEngine.sln"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

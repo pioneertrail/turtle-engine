@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\HydraPony\1337 h4x0r\TMNT AI\_deps\googletest-subbuild\CMakeFiles\56d1d8f4bca7a36b0fed8f3dc1cc20e5\googletest-populate-mkdir.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\HydraPony\1337 h4x0r\TMNT AI\_deps\googletest-subbuild\CMakeFiles\56d1d8f4bca7a36b0fed8f3dc1cc20e5\googletest-populate-download.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\HydraPony\1337 h4x0r\TMNT AI\_deps\googletest-subbuild\CMakeFiles\56d1d8f4bca7a36b0fed8f3dc1cc20e5\googletest-populate-update.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\HydraPony\1337 h4x0r\TMNT AI\_deps\googletest-subbuild\CMakeFiles\56d1d8f4bca7a36b0fed8f3dc1cc20e5\googletest-populate-patch.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\HydraPony\1337 h4x0r\TMNT AI\_deps\googletest-subbuild\CMakeFiles\56d1d8f4bca7a36b0fed8f3dc1cc20e5\googletest-populate-configure.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\HydraPony\1337 h4x0r\TMNT AI\_deps\googletest-subbuild\CMakeFiles\56d1d8f4bca7a36b0fed8f3dc1cc20e5\googletest-populate-build.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\HydraPony\1337 h4x0r\TMNT AI\_deps\googletest-subbuild\CMakeFiles\56d1d8f4bca7a36b0fed8f3dc1cc20e5\googletest-populate-install.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\HydraPony\1337 h4x0r\TMNT AI\_deps\googletest-subbuild\CMakeFiles\56d1d8f4bca7a36b0fed8f3dc1cc20e5\googletest-populate-test.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\HydraPony\1337 h4x0r\TMNT AI\_deps\googletest-subbuild\CMakeFiles\6a1166c84226afd08c824e0afb60fff6\googletest-populate-complete.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\HydraPony\1337 h4x0r\TMNT AI\_deps\googletest-subbuild\CMakeFiles\1f64123e40e446a402a6af4a4f39eeec\googletest-populate.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="C:\Users\HydraPony\1337 h4x0r\TMNT AI\_deps\googletest-subbuild\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="C:\Users\HydraPony\1337 h4x0r\TMNT AI\_deps\googletest-subbuild\CMakeFiles\googletest-populate" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{F02C1555-A6C3-3193-8AD2-367B9269667E}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

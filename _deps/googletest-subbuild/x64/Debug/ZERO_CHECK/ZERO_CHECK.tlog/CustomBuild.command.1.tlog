@@ -1,0 +1,10 @@
+^C:\USERS\HYDRAPONY\1337 H4X0R\TMNT AI\_DEPS\GOOGLETEST-SUBBUILD\CMAKEFILES\1F64123E40E446A402A6AF4A4F39EEEC\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SC:/Users/HydraPony/1337 h4x0r/TMNT AI/_deps/googletest-subbuild" "-BC:/Users/HydraPony/1337 h4x0r/TMNT AI/_deps/googletest-subbuild" --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file "C:/Users/HydraPony/1337 h4x0r/TMNT AI/_deps/googletest-subbuild/googletest-populate.sln"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
