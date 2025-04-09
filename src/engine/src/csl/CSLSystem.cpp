@@ -80,7 +80,7 @@ void CSLSystem::update() {
 }
 
 cv::Mat CSLSystem::getCurrentFrame() const {
-    std::lock_guard<std::mutex> lock(m_frameMutex);
+    std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_frameMutex));
     if (!m_frameQueue.empty()) {
         return m_frameQueue.back();
     }

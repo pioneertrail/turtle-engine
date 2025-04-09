@@ -7,6 +7,8 @@
 #include <thread>
 #include <vector>
 #include <random>
+#include <cmath>
+#define _USE_MATH_DEFINES
 
 namespace TurtleEngine {
 namespace CSL {
@@ -66,8 +68,9 @@ void testGestureRecognition() {
                 float centerY = height * 0.5f;
                 float radius = std::min(width, height) * 0.2f;
                 
+                constexpr float pi = 3.14159265358979323846f;
                 for (int i = 0; i <= 30; ++i) {
-                    float angle = static_cast<float>(i) / 30.0f * 2.0f * M_PI;
+                    float angle = static_cast<float>(i) * 2.0f * pi / static_cast<float>(30);
                     float x = centerX + radius * std::cos(angle);
                     float y = centerY + radius * std::sin(angle);
                     points.push_back(cv::Point2f(x + noise(gen), y + noise(gen)));

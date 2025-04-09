@@ -95,7 +95,7 @@ void Engine::detectHardwareCapabilities() {
     // Get hardware limits
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &m_hardwareInfo.maxTextureSize);
     glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &m_hardwareInfo.maxVertexAttributes);
-    glGetIntegerv(GL_MAX_UNIFORM_COMPONENTS, &m_hardwareInfo.maxUniformComponents);
+    glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &m_hardwareInfo.maxUniformComponents);
 
     // Log hardware information
     std::cout << "OpenGL Version: " << m_hardwareInfo.glVersion << std::endl;
