@@ -27,6 +27,12 @@ public:
     // Register a callback for gesture events
     void registerGestureCallback(GestureCallback callback);
 
+    // Register a callback specifically for plasma effects
+    void addPlasmaCallback(std::function<void(const GestureResult&)> callback);
+
+    // Test helper to directly trigger plasma callbacks
+    void triggerPlasmaCallback(const GestureResult& result);
+
     // Update the CSL system (should be called each frame)
     void update();
 
@@ -40,6 +46,8 @@ public:
     void setGestureSensitivity(float sensitivity);
     void setMinGestureConfidence(float confidence);
     void setCameraResolution(int width, int height);
+    void setPlasmaDuration(float duration);
+    float getPlasmaDuration() const { return m_plasmaDuration; }
 
 private:
     // Camera capture thread function
@@ -54,6 +62,8 @@ private:
     std::queue<cv::Mat> m_frameQueue;
     std::mutex m_frameMutex;
     std::vector<GestureCallback> m_callbacks;
+    std::vector<std::function<void(const GestureResult&)>> m_plasmaCallbacks;
+    float m_plasmaDuration = 0.5f;
     bool m_running;
     bool m_initialized;
     int m_cameraIndex;

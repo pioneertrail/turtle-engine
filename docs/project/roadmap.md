@@ -8,10 +8,11 @@ Total Duration: 6 Months (April 2025 - September 2025)
 **Duration**: April 9 - May 24, 2025
 
 #### Milestone 1.1: CSL Animation System (2 weeks)
-- [ ] Basic gesture recognition implementation
-- [ ] Tribe-specific visual effects
+- [ ] Basic gesture recognition implementation (Target: 5 gestures, >0.7f confidence, <0.5s latency)
+- [ ] Tribe-specific visual effects (Initial focus: Flammyx for Flammil gesture)
 - [ ] Quick sign execution system
 - [ ] Input handling and feedback
+- **[Milestone]** Functional Flammyx Integration with Flammil Gesture (Objective: Working prototype)
 
 #### Milestone 1.2: Combat Mechanics (2 weeks)
 - [ ] Plasma weapon system
@@ -29,10 +30,11 @@ Total Duration: 6 Months (April 2025 - September 2025)
 **Duration**: May 25 - July 9, 2025
 
 #### Milestone 2.1: Plasma Effects (2 weeks)
-- [ ] Custom shaders for plasma weapons
-- [ ] Particle systems for plasma jets
+- [ ] Custom shaders for plasma weapons (Includes Flammyx shader refinement)
+- [ ] Particle systems for plasma jets (Includes Flammyx ember trails)
 - [ ] Weapon charging feedback
-- [ ] Performance optimization
+- [ ] Performance optimization for plasma effects (<16ms target)
+- **[Milestone]** Polished Flammyx Plasma Effect (Objective: Refined visuals, combat integration)
 
 #### Milestone 2.2: Sonic Distortion (2 weeks)
 - [ ] Screen distortion effects
@@ -83,10 +85,11 @@ Total Duration: 6 Months (April 2025 - September 2025)
 - [ ] User testing
 
 #### Milestone 4.3: Final Testing (2 weeks)
-- [ ] Performance testing
+- [ ] Performance testing (Includes Flammyx validation on target specs)
 - [ ] Bug fixing
 - [ ] Visual effect refinement
 - [ ] Release preparation
+- **[Milestone]** Deployment-Ready Flammyx Effect (Objective: Final validation and sign-off)
 
 ### Key Deliverables
 1. **Alpha Build** (End of Phase 2)

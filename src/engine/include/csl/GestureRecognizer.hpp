@@ -25,7 +25,9 @@ struct GestureResult {
     float confidence;
     cv::Point2f position;
     std::vector<cv::Point2f> trajectory;
-    std::chrono::high_resolution_clock::time_point timestamp;
+    std::vector<float> velocities; // Normalized velocities (0.0 to 1.0)
+    std::chrono::high_resolution_clock::time_point timestamp;  // Start time
+    std::chrono::high_resolution_clock::time_point endTimestamp;
     float transitionLatency;  // Time since last gesture
 };
 
@@ -56,6 +58,7 @@ public:
     ComboTransition getLastTransition() const { return m_lastTransition; }
     float getAverageTransitionLatency() const { return m_averageTransitionLatency; }
     void resetTransitionStats();
+    float getGestureThreshold(GestureType type) const;
 
     // Add for test simulation
     GestureResult processSimulatedPoints(const std::vector<cv::Point2f>& points);

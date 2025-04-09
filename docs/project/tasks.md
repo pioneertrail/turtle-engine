@@ -160,13 +160,12 @@
    - **Dependencies**: None
    - **Estimated Time**: 3 days
 
-2. **Tribe-Specific Effects**
+2. **Tribe-Specific Effects Integration**
    - [ ] Design visual effect system
-   - [ ] Implement Flammyx effects
    - [ ] Implement Tempskrak effects
    - [ ] Implement Korcha effects
    - [ ] Implement Voxumbra effects
-   - **Dependencies**: Gesture Recognition Core
+   - **Dependencies**: Gesture Recognition Core, Specific Tribe Assets (Keyframes)
    - **Estimated Time**: 5 days
 
 3. **Quick Sign System**
@@ -386,3 +385,85 @@ Combat Mechanics
 - Progress review
 - Blockers and solutions
 - Task assignments 
+
+##### Flammyx Integration (Sub-Project within Tribe Effects)
+**Owner**: Gabriel (CSL) / Elena (Shader/VFX)
+**Status**: 🟡 In Progress
+**Priority**: P0
+
+###### Phase 1: Functional Integration (Current Sprint)
+1. **Velocity Normalization (Gabriel)**
+   - *Description:* Normalize `result.velocities` to a 0.0–1.0 range in `GestureRecognizer.cpp`.
+   - *Priority:* P0
+   - *Status:* 🔴 Not Started
+   - *Deliverable:* Updated callback with normalized velocity data.
+   - *Dependencies:* Current Flammil gesture implementation.
+2. **Configurable Duration (Gabriel)**
+   - *Description:* Implement `CSLSystem::setPlasmaDuration(float duration)`.
+   - *Priority:* P0
+   - *Status:* 🔴 Not Started
+   - *Deliverable:* Function integrated and tested.
+   - *Dependencies:* Velocity-enhanced callback.
+3. **Shader Development (Elena)**
+   - *Description:* Finalize Flammyx shader using trajectory and normalized velocity.
+   - *Priority:* P0
+   - *Status:* 🟡 In Progress
+   - *Deliverable:* Shader code compatible with OpenGL 4.0.
+   - *Dependencies:* Gesture keyframes (provided).
+4. **Real-Time Integration (Joint)**
+   - *Description:* Bind shader to callback, test with 0.3s, 0.5s, 0.7s durations.
+   - *Priority:* P0
+   - *Status:* 🔴 Not Started
+   - *Deliverable:* Working prototype (60 FPS @ GTX 1660).
+   - *Dependencies:* Tasks 1.1-1.3 completed.
+5. **Boundary Handling (Gabriel)**
+   - *Description:* Clamp trajectory/velocity data to screen bounds.
+   - *Priority:* P1
+   - *Status:* 🔴 Not Started
+   - *Deliverable:* Updated `processSimulatedPoints`.
+   - *Dependencies:* Task 1.1 completed.
+
+###### Phase 2: Visual Effects Enhancement
+1. **Performance Optimization (Gabriel)**
+   - *Description:* Optimize callback/gesture processing (<16ms latency).
+   - *Priority:* P0
+   - *Status:* 🔴 Not Started
+   - *Dependencies:* Phase 1 completion.
+2. **Visual Refinement (Elena)**
+   - *Description:* Enhance Flammyx glow, texture, particles.
+   - *Priority:* P0
+   - *Status:* 🔴 Not Started
+   - *Dependencies:* Phase 1 shader integration.
+3. **Combat Integration (Joint w/ Marcus)**
+   - *Description:* Validate effect with hitboxes/combos (<0.1s transition).
+   - *Priority:* P1
+   - *Status:* 🔴 Not Started
+   - *Dependencies:* Marcus's combat mechanics (Phase 2).
+4. **Documentation Update (Gabriel)**
+   - *Description:* Document new CSLSystem APIs in `technical/api.md`.
+   - *Priority:* P2
+   - *Status:* 🔴 Not Started
+   - *Dependencies:* Phase 1 completion.
+
+###### Phase 3: Final Validation
+1. **End-to-End Testing (Joint)**
+   - *Description:* Test Flammyx on min/rec specs, log results.
+   - *Priority:* P0
+   - *Status:* 🔴 Not Started
+   - *Deliverable:* Validated performance metrics.
+   - *Dependencies:* Phase 2 completion.
+2. **Visual Expansion (Elena)**
+   - *Description:* Adapt techniques for Tempskrak effects.
+   - *Priority:* P1
+   - *Status:* 🔴 Not Started
+   - *Dependencies:* Phase 2 refinement.
+3. **Final Review (Joint)**
+   - *Description:* Assess quality, approve for Alpha build.
+   - *Priority:* P0
+   - *Status:* 🔴 Not Started
+   - *Dependencies:* All prior tasks completed.
+
+3. **Quick Sign System**
+   - [ ] Design input handling
+   - [ ] Implement gesture shortcuts
+   - **Estimated Time**: 4 days

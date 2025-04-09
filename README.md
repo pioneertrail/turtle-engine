@@ -1,6 +1,19 @@
 # TurtleEngine
 
-A modern OpenGL-based rendering engine optimized for various hardware configurations.
+Engine for Silent Forge: Rebellion of Aethelgard
+
+## Project Overview
+This repository contains the source code for TurtleEngine, the custom game engine powering *Silent Forge: Rebellion of Aethelgard*. It includes core systems for rendering, physics, audio, and the unique Chronosign Language (CSL) gesture recognition system.
+
+## Current Status (As of April 2025)
+- **Phase 1: Core Systems** - In Progress
+  - **Milestone 1.1: CSL Animation System** - In Progress
+    - Basic gesture recognition for Khargail and Flammil implemented and validated.
+    - Initial work on tribe-specific visual effects underway, focusing on Flammyx integration for the Flammil gesture (collaboration with Elena).
+    - See `docs/project/roadmap.md` and `docs/project/tasks.md` for details.
+  - **Milestone 1.2: Combat Mechanics** - In Progress (Marcus)
+    - Hitbox detection and combo transition logging initiated.
+  - **Milestone 1.3: Temporal Anomaly Framework** - Pending
 
 ## Hardware Requirements
 

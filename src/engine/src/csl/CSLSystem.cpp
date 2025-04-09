@@ -11,6 +11,7 @@ CSLSystem::CSLSystem()
     , m_cameraIndex(0)
     , m_cameraResolution(640, 480)
     , m_lastGestureResult{GestureType::NONE, 0.0f, cv::Point2f(), std::vector<cv::Point2f>()}
+    , m_plasmaDuration(0.1f)
 {
     m_gestureRecognizer = std::make_unique<GestureRecognizer>();
 }
@@ -58,6 +59,33 @@ void CSLSystem::stop() {
 
 void CSLSystem::registerGestureCallback(GestureCallback callback) {
     m_callbacks.push_back(callback);
+}
+
+void CSLSystem::addPlasmaCallback(std::function<void(const GestureResult&)> callback) {
+    m_plasmaCallbacks.push_back(callback);
+}
+
+void CSLSystem::setPlasmaDuration(float duration) {
+    m_plasmaDuration = std::max(0.1f, duration); // Ensure duration is positive
+    std::cout << "CSLSystem::setPlasmaDuration: Set to " << m_plasmaDuration << "s" << std::endl;
+}
+
+void CSLSystem::triggerPlasmaCallback(const GestureResult& result) {
+    // This is primarily for testing the callback mechanism directly.
+    // It bypasses the usual processFrame logic.
+    if (result.type == GestureType::FLAMMIL) { // Still check type for safety
+        float flammilThreshold = m_gestureRecognizer ? m_gestureRecognizer->getGestureThreshold(GestureType::FLAMMIL) : 0.75f; // Default if no recognizer
+        if (result.confidence >= flammilThreshold) {
+             std::cout << "CSLSystem::triggerPlasmaCallback: Invoking callbacks for Flammil." << std::endl;
+            for (const auto& plasmaCallback : m_plasmaCallbacks) {
+                plasmaCallback(result);
+            }
+        } else {
+            std::cout << "CSLSystem::triggerPlasmaCallback: Flammil confidence too low (" << result.confidence << " < " << flammilThreshold << "), not invoking callbacks." << std::endl;
+        }
+    } else {
+         std::cout << "CSLSystem::triggerPlasmaCallback: Result type is not Flammil, not invoking callbacks." << std::endl;
+    }
 }
 
 void CSLSystem::update() {
@@ -148,6 +176,13 @@ void CSLSystem::processFrame(const cv::Mat& frame) {
     if (result.confidence >= 0.7f) { // Using default minimum confidence
         for (const auto& callback : m_callbacks) {
             callback(result);
+        }
+        // Trigger plasma effect if Flammil (Check against specific threshold)
+        float flammilThreshold = m_gestureRecognizer->getGestureThreshold(GestureType::FLAMMIL);
+        if (result.type == GestureType::FLAMMIL && result.confidence >= flammilThreshold) { // Use specific threshold
+            for (const auto& plasmaCallback : m_plasmaCallbacks) {
+                plasmaCallback(result);
+            }
         }
     }
 }
