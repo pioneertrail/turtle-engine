@@ -5,6 +5,22 @@
 #include <chrono>
 #include <thread>
 #include <cmath>
+#include <fstream>
+#include <filesystem>
+#include <iomanip>
+#include <sstream>
+#include <ctime>
+
+// Add this helper function at the top of the file
+std::string getCurrentTimestamp() {
+    auto now = std::chrono::system_clock::now();
+    auto now_c = std::chrono::system_clock::to_time_t(now);
+    std::tm timeinfo;
+    localtime_s(&timeinfo, &now_c);
+    std::stringstream ss;
+    ss << std::put_time(&timeinfo, "%Y-%m-%d %H:%M:%S");
+    return ss.str();
+}
 
 // Simple visual feedback for gesture detection
 void drawGestureFeedback(cv::Mat& frame, const TurtleEngine::CSL::GestureResult& result) {
@@ -118,22 +134,142 @@ void drawGestureFeedback(cv::Mat& frame, const TurtleEngine::CSL::GestureResult&
 }
 
 int main() {
-    std::cout << "Initializing CSL Animation System Test Application..." << std::endl;
+    std::cout << "[" << getCurrentTimestamp() << "] Initializing CSL Animation System Test Application..." << std::endl;
+    
+    // Get the executable's directory
+    std::filesystem::path exePath = std::filesystem::current_path();
+    std::filesystem::path logDir = exePath / "logs";
+    
+    // Create logs directory if it doesn't exist
+    std::filesystem::create_directories(logDir);
     
     // Create and initialize the CSL system
     TurtleEngine::CSL::CSLSystem csl;
+    
+    // Enhanced error logging for initialization
+    std::ofstream log(logDir / "gesture_debug.log", std::ios::app);
+    if (log.is_open()) {
+        auto now = std::chrono::system_clock::now();
+        auto nowTimeT = std::chrono::system_clock::to_time_t(now);
+        auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+        std::stringstream ss;
+        ss << std::put_time(std::localtime(&nowTimeT), "%Y-%m-%d %H:%M:%S") << '.' 
+           << std::setfill('0') << std::setw(3) << nowMs.count();
+        log << "[" << ss.str() << "] Starting CSL Test Application" << std::endl;
+        log << "OpenCV version: " << CV_VERSION << std::endl;
+        log << "Working directory: " << std::filesystem::current_path() << std::endl;
+        log << "Log directory: " << logDir << std::endl;
+        log.close();
+    }
+    
     if (!csl.initialize(0)) {
         std::cerr << "Failed to initialize CSL system. Please check your camera connection." << std::endl;
+        if (log.is_open()) {
+            auto now = std::chrono::system_clock::now();
+            auto nowTimeT = std::chrono::system_clock::to_time_t(now);
+            auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+            std::stringstream ss;
+            ss << std::put_time(std::localtime(&nowTimeT), "%H:%M:%S") << '.' 
+               << std::setfill('0') << std::setw(3) << nowMs.count();
+            log << "[" << ss.str() << "] Error: Camera initialization failed" << std::endl;
+            log.close();
+        }
         return -1;
     }
     
-    std::cout << "CSL System initialized successfully." << std::endl;
+    // Set camera parameters for optimal performance
+    cv::VideoCapture cap(0);
+    if (cap.isOpened()) {
+        cap.set(cv::CAP_PROP_FPS, 60);  // Set to 60 FPS for smoother feedback
+        cap.set(cv::CAP_PROP_FRAME_WIDTH, 1280);  // Higher resolution for better detection
+        cap.set(cv::CAP_PROP_FRAME_HEIGHT, 720);
+        cap.release();
+    }
     
-    // Register a callback for gesture detection
-    csl.registerGestureCallback([](const TurtleEngine::CSL::GestureResult& result) {
-        if (result.type == TurtleEngine::CSL::GestureType::SWIPE_RIGHT && result.confidence >= 0.7f) {
-            std::cout << "ANNIHILATE detected! Confidence: " << result.confidence << std::endl;
-            // In the full implementation, this will trigger Elena's plasma effect
+    // Log successful initialization and camera details
+    cv::Mat frame = csl.getCurrentFrame();
+    if (log.is_open()) {
+        auto now = std::chrono::system_clock::now();
+        auto nowTimeT = std::chrono::system_clock::to_time_t(now);
+        auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+        std::stringstream ss;
+        ss << std::put_time(std::localtime(&nowTimeT), "%H:%M:%S") << '.' 
+           << std::setfill('0') << std::setw(3) << nowMs.count();
+        log << "[" << ss.str() << "] Camera initialized successfully" << std::endl;
+        log << "Frame size: " << frame.size() << std::endl;
+        log << "Frame rate: 60 FPS" << std::endl;
+        log.close();
+    }
+    
+    std::cout << "[" << getCurrentTimestamp() << "] CSL System initialized successfully." << std::endl;
+    
+    // Configure test parameters for Khargail
+    csl.setGestureSensitivity(1.2f);  // Increased sensitivity for better detection
+    csl.setMinGestureConfidence(0.65f);  // Slightly lower threshold for testing
+    
+    // Track gesture start time for latency measurement
+    std::chrono::time_point<std::chrono::system_clock> gestureStartTime;
+    bool gestureStarted = false;
+    
+    // Register a callback for gesture detection with dual logging
+    csl.registerGestureCallback([&](const TurtleEngine::CSL::GestureResult& result) {
+        if (result.type == TurtleEngine::CSL::GestureType::SWIPE_RIGHT) {
+            // Track gesture start
+            if (!gestureStarted && result.confidence >= 0.3f) {
+                gestureStarted = true;
+                gestureStartTime = std::chrono::system_clock::now();
+            }
+            
+            // Log when confidence threshold is met
+            if (result.confidence >= 0.65f) {
+                auto now = std::chrono::system_clock::now();
+                auto latency = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    now - gestureStartTime).count();
+                
+                std::cout << "Khargail detected! Confidence: " << result.confidence 
+                          << ", Latency: " << latency << "ms" << std::endl;
+                
+                // Log to gesture_recognition_results.txt
+                std::ofstream logFile("gesture_recognition_results.txt", std::ios::app);
+                if (logFile.is_open()) {
+                    auto nowTimeT = std::chrono::system_clock::to_time_t(now);
+                    std::stringstream ss;
+                    ss << std::put_time(std::localtime(&nowTimeT), "%Y-%m-%d %H:%M:%S");
+                    logFile << "Khargail Test - " << ss.str() << std::endl;
+                    logFile << "Confidence: " << result.confidence << std::endl;
+                    logFile << "Latency: " << latency << "ms" << std::endl;
+                    logFile << "Trajectory Points: " << result.trajectory.size() << std::endl;
+                    logFile << "-------------------" << std::endl;
+                    logFile.close();
+                }
+                
+                // Log to logs/gesture_debug.log
+                try {
+                    std::filesystem::create_directories("logs");
+                    std::ofstream debugFile("logs/gesture_debug.log", std::ios::app);
+                    if (debugFile.is_open()) {
+                        auto nowTimeT = std::chrono::system_clock::to_time_t(now);
+                        auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            now.time_since_epoch()) % 1000;
+                        std::stringstream ss;
+                        ss << std::put_time(std::localtime(&nowTimeT), "%H:%M:%S") << '.' 
+                           << std::setfill('0') << std::setw(3) << nowMs.count();
+                        debugFile << "[" << ss.str() << "] Gesture: Khargail, Confidence: " 
+                                  << result.confidence << ", Latency: " << latency << "ms"
+                                  << ", Position: (" << result.position.x << "," << result.position.y 
+                                  << ")" << std::endl;
+                        debugFile.close();
+                    }
+                } catch (const std::exception& e) {
+                    std::cerr << "Error writing to gesture_debug.log: " << e.what() << std::endl;
+                }
+                
+                // Reset gesture tracking
+                gestureStarted = false;
+            }
+        } else {
+            // Reset gesture tracking if a different gesture is detected
+            gestureStarted = false;
         }
     });
     
@@ -143,7 +279,7 @@ int main() {
         return -1;
     }
     
-    std::cout << "CSL System started. Perform the 'annihilate' gesture (right swipe down)..." << std::endl;
+    std::cout << "[" << getCurrentTimestamp() << "] CSL System started. Perform the 'annihilate' gesture (right swipe down)..." << std::endl;
     std::cout << "Press ESC to exit." << std::endl;
     
     // Create a window to display the camera feed
