@@ -24,19 +24,21 @@ option(ENABLE_FAST_MATH "Enable fast math optimizations" ON)
 option(WITH_CUDA "Enable CUDA support if available" ON)
 option(BUILD_TESTS "Build test suite" OFF)
 
-# Set OpenCV_DIR to help find the local installation with fallback
-set(OpenCV_DIR "C:/Users/HydraPony/dev/opencv/build")
-find_package(OpenCV REQUIRED PATHS ${OpenCV_DIR} NO_DEFAULT_PATH)
-if(NOT OpenCV_FOUND)
-    message(STATUS "Local OpenCV not found, searching system paths")
-    find_package(OpenCV REQUIRED)
-endif()
-
 # Find required packages
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
-find_package(glfw3 CONFIG REQUIRED)
-find_package(glm CONFIG REQUIRED)
+find_package(glfw3 REQUIRED CONFIG) # Use CONFIG mode for glfw3 with vcpkg
+find_package(glm REQUIRED CONFIG)   # Use CONFIG mode for glm with vcpkg
+find_package(OpenCV REQUIRED)
+if(NOT OpenCV_FOUND)
+    message(FATAL_ERROR "OpenCV not found. Please check your installation.")
+endif()
+
+# Add OpenCV bin directory to PATH for runtime
+# No longer needed to set manually if vcpkg handles DLL deployment or they are found in system PATH
+# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+# set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+# set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 # Core engine library for CSL, rendering, and game logic
 add_library(TurtleEngineCore
@@ -50,15 +52,16 @@ add_library(TurtleEngineCore
 target_include_directories(TurtleEngineCore PUBLIC
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/src/engine/include
-    ${OpenCV_INCLUDE_DIRS}
+    # OpenCV includes are handled by find_package with vcpkg
+    # ${OpenCV_INCLUDE_DIRS} # Removed
 )
 
 target_link_libraries(TurtleEngineCore PUBLIC
     OpenGL::GL
-    GLEW::GLEW
-    glfw
-    glm::glm-header-only
-    ${OpenCV_LIBS}
+    GLEW::GLEW # This target name is usually correct for GLEW
+    glfw      # glfw3 find_package (CONFIG mode) typically provides the 'glfw' target
+    glm::glm  # glm find_package (CONFIG mode) often provides 'glm::glm'
+    ${OpenCV_LIBS} # vcpkg should populate this variable via find_package
 )
 
 # Create main executable
@@ -89,6 +92,43 @@ if(BUILD_TESTS)
         ${CMAKE_SOURCE_DIR}/src/engine/include 
         ${CMAKE_SOURCE_DIR}/src/tests
     )
+    
+    # Add basic camera test
+    add_executable(CameraTest src/tests/CameraTest.cpp)
+    target_link_libraries(CameraTest PRIVATE ${OpenCV_LIBS}) # Use ${OpenCV_LIBS}
+    # target_include_directories(CameraTest PRIVATE ${OpenCV_INCLUDE_DIRS}) # No longer needed
+endif()
+
+# After all targets are defined, add the DLL copy commands
+# This might need adjustment depending on how vcpkg handles DLLs
+if(OpenCV_BIN_DIR AND EXISTS "${OpenCV_BIN_DIR}") # Check if vcpkg provided the bin dir
+    file(GLOB OpenCV_DLLS "${OpenCV_BIN_DIR}/*.dll")
+    foreach(DLL ${OpenCV_DLLS})
+        if (TARGET TurtleEngine)
+            add_custom_command(TARGET TurtleEngine POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${DLL}
+                $<TARGET_FILE_DIR:TurtleEngine>)
+        endif()
+        if (TARGET CSLTest)
+            add_custom_command(TARGET CSLTest POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${DLL}
+                $<TARGET_FILE_DIR:CSLTest>)
+        endif()
+        if (TARGET GestureTest)
+            add_custom_command(TARGET GestureTest POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${DLL}
+                $<TARGET_FILE_DIR:GestureTest>)
+        endif()
+        if (TARGET CameraTest)
+            add_custom_command(TARGET CameraTest POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${DLL}
+                $<TARGET_FILE_DIR:CameraTest>)
+        endif()
+    endforeach()
 endif()
 
 # Set output directories
