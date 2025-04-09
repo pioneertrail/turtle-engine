@@ -1,5 +1,5 @@
 # Silent Forge: Rebellion of Aethelgard - Project Roadmap
-# Last Updated: 2025-04-09
+# Last Updated: 2025-04-10
 
 ## Project Overview
 - **Project:** Silent Forge: Rebellion of Aethelgard
@@ -24,11 +24,13 @@
 - [x] Push to repository
 
 #### Step 2: Flammil Gesture (IN PROGRESS 🔄)
-- [ ] Receive keyframes from Elena
-- [ ] Implement plasma effects integration
-- [ ] Test Flammil gesture
-  - [ ] Target: >0.7f confidence
-  - [ ] Target: <0.5s latency
+- [x] Receive keyframes from Elena
+- [x] Implement plasma effects integration
+- [x] Test Flammil gesture
+  - [x] Target: >0.7f confidence (Achieved: 0.966 in Debug/Release)
+  - [x] Target: <0.5s latency (Achieved: 0.021s in Release)
+- [ ] Refine calculateSwipeConfidence for better gesture differentiation (Khargail/Flammil/Annihlat tied at 0.966)
+- [ ] Fix gesture_debug.log file stream issue (currently silent)
 - [ ] Validate gesture combo transitions with Marcus's hitbox detection
 - [ ] Document results
 - [ ] Push updates
