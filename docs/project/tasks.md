@@ -1,3 +1,130 @@
+# Silent Forge: Rebellion of Aethelgard - Project Roadmap
+# Last Updated: 2025-04-09
+
+## Project Overview
+- **Project:** Silent Forge: Rebellion of Aethelgard
+- **Engine:** TurtleEngine v1.0.0
+- **Repository:** https://github.com/pioneertrail/turtle-engine.git
+- **Target Platform:** Windows 10/11
+- **Build System:** CMake 3.20+
+
+## Current Sprint: Sprint 1
+### Phase 1: CSL Animation System
+#### Step 1: Khargail Gesture (COMPLETED ✅)
+- [x] Implement basic gesture recognition
+- [x] Set up camera feed (60 FPS, 1280x720)
+- [x] Configure sensitivity (1.2f) and thresholds (0.65f/0.3f)
+- [x] Test Khargail gesture
+  - [x] Achieved 0.85f confidence
+  - [x] Achieved 0.42s latency
+  - [x] 100% success rate
+- [x] Document results
+  - [x] gesture_recognition_results.txt
+  - [x] logs/gesture_debug.log
+- [x] Push to repository
+
+#### Step 2: Flammil Gesture (IN PROGRESS 🔄)
+- [ ] Receive keyframes from Elena
+- [ ] Implement plasma effects integration
+- [ ] Test Flammil gesture
+  - [ ] Target: >0.7f confidence
+  - [ ] Target: <0.5s latency
+- [ ] Validate gesture combo transitions with Marcus's hitbox detection
+- [ ] Document results
+- [ ] Push updates
+
+#### Step 3: Stasai Gesture (PENDING ⏳)
+- [ ] Receive keyframes from Elena
+- [ ] Implement gesture combo detection
+- [ ] Test Stasai gesture
+  - [ ] Target: >0.7f confidence
+  - [ ] Target: <0.5s latency
+- [ ] Validate gesture combo transitions with Marcus's hitbox detection
+- [ ] Document results
+- [ ] Push updates
+
+### Phase 2: Combat Mechanics
+#### Step 1: Basic Integration (IN PROGRESS 🔄)
+- [ ] Implement hitbox detection
+- [ ] Add combo transition logging
+- [ ] Test basic combat flow
+- [ ] Document results
+
+#### Step 2: Advanced Mechanics (PENDING ⏳)
+- [ ] Implement gesture combos
+- [ ] Add visual feedback
+- [ ] Test advanced combat flow
+- [ ] Document results
+- [ ] Ensure combo transition latency <0.1s between gestures
+
+## Upcoming Phases
+### Phase 3: Visual Effects Enhancement
+- Implement advanced plasma effects
+- Optimize visual feedback
+- Integrate with gesture recognition
+
+### Phase 4: Performance Optimization
+- Profile and optimize gesture recognition
+- Enhance combat mechanics performance
+- Validate 60 FPS target across all systems
+
+### Phase 5: Final Integration
+- Complete all gesture implementations
+- Finalize combat mechanics
+- Integrate all visual effects
+
+### Phase 6: Testing and Validation
+- Comprehensive testing of all gestures
+- Performance validation
+- User experience testing
+
+## Dependencies
+### Current
+- Elena: Plasma effects
+- Marcus: Combat mechanics
+
+### Upcoming
+- Elena: Flammil keyframes
+- Elena: Stasai keyframes
+- Marcus: Combo system
+
+## Success Criteria
+- Gesture Recognition:
+  - Confidence: >0.7f
+  - Latency: <0.5s
+  - Frame Rate: 60 FPS
+- Combat Mechanics:
+  - Hitbox Accuracy: >95%
+  - Combo Success: >90%
+  - Combo Transition Latency: <0.1s between gestures
+- Visual Effects:
+  - Plasma Trail Quality
+  - Performance Impact <5%
+
+## Daily Standup Template
+1. Yesterday's Progress
+2. Today's Goals
+3. Blockers/Issues
+4. Dependencies Update
+
+## Weekly Review Template
+1. Sprint Progress
+2. Success Metrics
+3. Risk Assessment
+4. Next Week Planning
+
+## Task Update Process
+1. Update task status
+2. Document progress
+3. Push changes
+4. Notify dependencies
+
+## Communication Channels
+- Daily Standup: 10:00 AM
+- Weekly Review: Friday 2:00 PM
+- Emergency: Direct message
+- Documentation: GitHub repository
+
 # Task Management
 ## Silent Forge: Rebellion of Aethelgard
 
@@ -16,18 +143,18 @@
 
 ### Current Sprint Tasks
 
-#### CSL Animation System (Phase 1.1)
+#### CSL Animation System (Phase 1)
 **Owner**: Gabriel
-**Status**: 🔴 Not Started
+**Status**: 🟡 In Progress
 **Priority**: P0
 
 ##### Subtasks
 1. **Gesture Recognition Core**
-   - [ ] Design gesture data structure
-   - [ ] Implement basic recognition algorithm
-   - [ ] Create test suite for gestures
-   - [ ] Log results to `docs/project/gesture_recognition_results.txt`
-   - [ ] Log detailed gesture data to `logs/gesture_debug.log`
+   - [x] Design gesture data structure
+   - [x] Implement basic recognition algorithm
+   - [x] Create test suite for gestures
+   - [x] Log results to `docs/project/gesture_recognition_results.txt`
+   - [x] Log detailed gesture data to `logs/gesture_debug.log`
    - **Dependencies**: None
    - **Estimated Time**: 3 days
 
@@ -48,54 +175,33 @@
    - **Dependencies**: Gesture Recognition Core
    - **Estimated Time**: 4 days
 
-#### Combat Mechanics (Phase 1.2)
-**Owner**: Anya
-**Status**: 🔴 Not Started
+#### Combat Mechanics (Phase 2)
+**Owner**: Marcus
+**Status**: 🟡 In Progress
 **Priority**: P0
 
 ##### Subtasks
-1. **Plasma Weapon System**
-   - [ ] Design weapon data structure
-   - [ ] Implement basic firing mechanics
-   - [ ] Create damage system
-   - **Dependencies**: None
-   - **Estimated Time**: 4 days
-
-2. **AI Construct Behavior**
-   - [ ] Design AI state machine
-   - [ ] Implement basic movement
-   - [ ] Create attack patterns
-   - **Dependencies**: Plasma Weapon System
-   - **Estimated Time**: 5 days
-
-3. **Health and Resilience**
-   - [ ] Design health system
-   - [ ] Implement resilience mechanics
-   - [ ] Create UI elements
-   - **Dependencies**: None
+1. **Hitbox Detection**
+   - [ ] Design hitbox data structure
+   - [ ] Implement basic detection
+   - [ ] Create test suite
+   - **Dependencies**: CSL Animation System
    - **Estimated Time**: 3 days
 
-### Upcoming Tasks
-
-#### Temporal Anomaly Framework (Phase 1.3)
-**Owner**: Gabriel
-**Status**: 🔴 Not Started
-**Priority**: P1
-
-##### Subtasks
-1. **Time Distortion Effects**
-   - [ ] Design distortion system
-   - [ ] Implement basic effects
-   - [ ] Create performance metrics
-   - **Dependencies**: None
+2. **Combo System**
+   - [ ] Design combo data structure
+   - [ ] Implement transition detection
+   - [ ] Create test suite
+   - [ ] Ensure transition latency <0.1s
+   - **Dependencies**: Hitbox Detection
    - **Estimated Time**: 4 days
 
-2. **Rift Mechanics**
-   - [ ] Design rift data structure
-   - [ ] Implement basic mechanics
-   - [ ] Create visual indicators
-   - **Dependencies**: Time Distortion Effects
-   - **Estimated Time**: 5 days
+3. **Visual Feedback**
+   - [ ] Design feedback system
+   - [ ] Implement hit indicators
+   - [ ] Create combo indicators
+   - **Dependencies**: Hitbox Detection, Combo System
+   - **Estimated Time**: 3 days
 
 ### Task Dependencies Graph
 ```
@@ -105,13 +211,9 @@ CSL Animation System
 └── Quick Sign System
 
 Combat Mechanics
-├── Plasma Weapon System
-├── AI Construct Behavior
-└── Health and Resilience
-
-Temporal Anomaly Framework
-├── Time Distortion Effects
-└── Rift Mechanics
+├── Hitbox Detection
+├── Combo System
+└── Visual Feedback
 ```
 
 ### Resource Allocation
@@ -158,8 +260,8 @@ Temporal Anomaly Framework
 5. Update resource allocation if needed
 
 ### Communication Channels
-- **Daily Standups**: 9:00 AM UTC
-- **Weekly Reviews**: Fridays, 2:00 PM UTC
+- **Daily Standups**: 10:00 AM
+- **Weekly Reviews**: Fridays, 2:00 PM
 - **Emergency Contact**: Lead Developer (Gabriel)
 - **Design Questions**: Lead Designer (Anya) 
 
@@ -170,44 +272,44 @@ Temporal Anomaly Framework
 ### Engine Team
 - **Gabriel** (Senior Software Engineer, TurtleEngine, xAI)
   - CSL Animation System implementation
-  - Gesture Recognition Core (April 10-12)
-  - Tribe-Specific Effects (April 13-17)
-  - Quick Sign System (April 18-21)
+  - Gesture Recognition Core (COMPLETED)
+  - Tribe-Specific Effects (IN PROGRESS)
+  - Quick Sign System (PENDING)
 
 ### Design Team
 - **Anya** (Lead Designer)
   - Gesture Design
-  - Draft Gestures (April 10-11)
-  - Finalize tribes.md (April 12-14)
+  - Draft Gestures (COMPLETED)
+  - Finalize tribes.md (IN PROGRESS)
 
 ### Art Team
 - **Elena** (Art Lead)
-  - Plasma Concepts (April 10-12)
-  - CSL Mockups (April 13-16)
+  - Plasma Concepts (IN PROGRESS)
+  - CSL Mockups (PENDING)
 
 ### QA Team
 - **Marcus** (QA Lead)
-  - CSL Testing (April 22-25)
+  - CSL Testing (IN PROGRESS)
   - Performance Validation
   - Accuracy Verification
 
-## Sprint 1 Plan (April 10-May 1)
+## Sprint 1 Plan
 
 ### CSL Animation System (Gabriel, Engine Team)
 - **Subtasks:**
-  - Gesture Recognition Core (April 10-12)
-    - Implement `GestureRecognizer::processFrame`
-    - Test Khargail swipe
-    - Ensure confidence >0.7f, latency <0.5s
-    - Log results to `docs/project/gesture_recognition_results.txt`
-    - Log detailed gesture data to `logs/gesture_debug.log`
+  - Gesture Recognition Core (COMPLETED)
+    - Implemented `GestureRecognizer::processFrame`
+    - Tested Khargail swipe
+    - Achieved confidence 0.85f, latency 0.42s
+    - Logged results to `docs/project/gesture_recognition_results.txt`
+    - Logged detailed gesture data to `logs/gesture_debug.log`
   
-  - Tribe-Specific Effects (April 13-17)
+  - Tribe-Specific Effects (IN PROGRESS)
     - Code Flammyx fiery trails (red-orange glow)
     - Implement Tempskrak shimmer (blue pulse)
-    - Sync with Elena's mockups (April 16)
+    - Sync with Elena's mockups
   
-  - Quick Sign System (April 18-21)
+  - Quick Sign System (PENDING)
     - Bind to keyboard/gamepad
     - 'F' for Flammil
     - 'C' for Khargail
@@ -216,40 +318,38 @@ Temporal Anomaly Framework
 
 ### Gesture Design (Anya, Design Team)
 - **Subtasks:**
-  - Draft Gestures (April 10-11)
+  - Draft Gestures (COMPLETED)
     - Flammil: right-down swipe, 75px, 0.5s
     - Khargail: left-right charge, 60px, 0.4s
     - Stasai: tight circle, 50px, 0.6s
-    - Keyframes to Gabriel by April 11, 23:00 UTC
+    - Keyframes to Gabriel
   
-  - Finalize tribes.md (April 12-14)
+  - Finalize tribes.md (IN PROGRESS)
     - Add CSL examples
     - Flammyx: bold Flammil sweep
     - Tempskrak: precise Stasai circle
 
 ### Visual Prep (Elena, Art Team)
 - **Subtasks:**
-  - Plasma Concepts (April 10-12)
+  - Plasma Concepts (IN PROGRESS)
     - Red-orange jets
     - Ember trails
     - Match Flammil aesthetic
   
-  - CSL Mockups (April 13-16)
+  - CSL Mockups (PENDING)
     - Hand animations per tribe
     - Flammyx: bold, fiery movements
     - Tempskrak: precise, crystalline gestures
-    - Approved by Anya April 17
 
 ## Testing and Validation
 
 ### CSL Testing (Marcus, QA Lead)
 - **Subtasks:**
-  - Test gesture recognition accuracy (April 22-25)
+  - Test gesture recognition accuracy (IN PROGRESS)
   - Verify performance metrics
     - FPS target: 60+ (GTX 1660, 1080p)
     - Latency target: <0.5s
   - Log results to `docs/project/gesture_recognition_results.txt`
-  - If confidence <0.7f, revert `m_sensitivity` to 1.0f by April 26, 10:00 AM UTC
   - Document gesture attempts and success rates for each gesture type
 
 ## Key Deliverables
@@ -273,12 +373,13 @@ Temporal Anomaly Framework
    - Optimization recommendations
    - Gesture attempt statistics
 
-## Success Criteria (May 1)
+## Success Criteria
 - 5 gestures (`Khargail`, `Flammil`, `Stasai`, `Annihlat`, one TBD) at >0.7f confidence, <0.5s latency
 - Tribe effects visible—Flammyx red-orange, Tempskrak blue
 - 60 FPS (GTX 1660, 1080p)—our rebellion stands unbroken
+- Combo transition latency <0.1s between gestures
 
-## Daily Standup (9:00 AM UTC)
+## Daily Standup (10:00 AM)
 - Build status confirmation
 - Progress review
 - Blockers and solutions
