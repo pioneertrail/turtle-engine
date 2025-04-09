@@ -32,7 +32,7 @@ void testGestureRecognition() {
     
     // Test parameters
     const int numTests = 10;
-    const int numGestures = 3; // SWIPE_RIGHT, CIRCLE, TAP
+    const int numGestures = 4; // KHARGAIL, FLAMMIL, STASAI, ANNIHLAT
     std::vector<int> correctDetections(numGestures, 0);
     std::vector<std::vector<float>> confidenceScores(numGestures);
     
@@ -47,12 +47,12 @@ void testGestureRecognition() {
         std::uniform_real_distribution<float> noise(-10.0f, 10.0f);
         
         switch (type) {
-            case GestureType::SWIPE_RIGHT: {
-                // Generate a right swipe with some downward component (for "annihilate")
+            case GestureType::KHARGAIL: {
+                // Generate a left-right charge
                 float startX = width * 0.2f;
                 float startY = height * 0.5f;
                 float endX = width * 0.8f;
-                float endY = height * 0.7f; // Downward component
+                float endY = height * 0.5f;
                 
                 for (int i = 0; i <= 30; ++i) {
                     float t = static_cast<float>(i) / 30.0f;
@@ -62,11 +62,26 @@ void testGestureRecognition() {
                 }
                 break;
             }
-            case GestureType::CIRCLE: {
-                // Generate a circle
+            case GestureType::FLAMMIL: {
+                // Generate a right-down swipe
+                float startX = width * 0.2f;
+                float startY = height * 0.3f;
+                float endX = width * 0.8f;
+                float endY = height * 0.7f;
+                
+                for (int i = 0; i <= 30; ++i) {
+                    float t = static_cast<float>(i) / 30.0f;
+                    float x = startX + t * (endX - startX);
+                    float y = startY + t * (endY - startY);
+                    points.push_back(cv::Point2f(x + noise(gen), y + noise(gen)));
+                }
+                break;
+            }
+            case GestureType::STASAI: {
+                // Generate a tight circle
                 float centerX = width * 0.5f;
                 float centerY = height * 0.5f;
-                float radius = std::min(width, height) * 0.2f;
+                float radius = std::min(width, height) * 0.15f;
                 
                 constexpr float pi = 3.14159265358979323846f;
                 for (int i = 0; i <= 30; ++i) {
@@ -77,12 +92,17 @@ void testGestureRecognition() {
                 }
                 break;
             }
-            case GestureType::TAP: {
-                // Generate a tap (small movement)
-                float x = width * 0.5f;
-                float y = height * 0.5f;
+            case GestureType::ANNIHLAT: {
+                // Generate a right swipe down
+                float startX = width * 0.2f;
+                float startY = height * 0.3f;
+                float endX = width * 0.8f;
+                float endY = height * 0.7f;
                 
-                for (int i = 0; i <= 5; ++i) {
+                for (int i = 0; i <= 30; ++i) {
+                    float t = static_cast<float>(i) / 30.0f;
+                    float x = startX + t * (endX - startX);
+                    float y = startY + t * (endY - startY);
                     points.push_back(cv::Point2f(x + noise(gen), y + noise(gen)));
                 }
                 break;
@@ -112,16 +132,20 @@ void testGestureRecognition() {
         
         switch (gestureIdx) {
             case 0:
-                gestureType = GestureType::SWIPE_RIGHT;
-                gestureName = "SWIPE_RIGHT (Annihilate)";
+                gestureType = GestureType::KHARGAIL;
+                gestureName = "KHARGAIL (Charge)";
                 break;
             case 1:
-                gestureType = GestureType::CIRCLE;
-                gestureName = "CIRCLE";
+                gestureType = GestureType::FLAMMIL;
+                gestureName = "FLAMMIL (Flame)";
                 break;
             case 2:
-                gestureType = GestureType::TAP;
-                gestureName = "TAP";
+                gestureType = GestureType::STASAI;
+                gestureName = "STASAI (Circle)";
+                break;
+            case 3:
+                gestureType = GestureType::ANNIHLAT;
+                gestureName = "ANNIHLAT (Annihilate)";
                 break;
             default:
                 continue;
@@ -169,13 +193,16 @@ void testGestureRecognition() {
         std::string gestureName;
         switch (gestureIdx) {
             case 0:
-                gestureName = "SWIPE_RIGHT (Annihilate)";
+                gestureName = "KHARGAIL (Charge)";
                 break;
             case 1:
-                gestureName = "CIRCLE";
+                gestureName = "FLAMMIL (Flame)";
                 break;
             case 2:
-                gestureName = "TAP";
+                gestureName = "STASAI (Circle)";
+                break;
+            case 3:
+                gestureName = "ANNIHLAT (Annihilate)";
                 break;
             default:
                 continue;

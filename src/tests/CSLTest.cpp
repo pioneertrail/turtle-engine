@@ -37,26 +37,20 @@ void drawGestureFeedback(cv::Mat& frame, const TurtleEngine::CSL::GestureResult&
     // Draw gesture type and confidence
     std::string gestureText;
     switch (result.type) {
-        case TurtleEngine::CSL::GestureType::SWIPE_RIGHT:
-            gestureText = "SWIPE_RIGHT";
+        case TurtleEngine::CSL::GestureType::KHARGAIL:
+            gestureText = "KHARGAIL";
             break;
-        case TurtleEngine::CSL::GestureType::SWIPE_LEFT:
-            gestureText = "SWIPE_LEFT";
+        case TurtleEngine::CSL::GestureType::FLAMMIL:
+            gestureText = "FLAMMIL";
             break;
-        case TurtleEngine::CSL::GestureType::SWIPE_UP:
-            gestureText = "SWIPE_UP";
+        case TurtleEngine::CSL::GestureType::STASAI:
+            gestureText = "STASAI";
             break;
-        case TurtleEngine::CSL::GestureType::SWIPE_DOWN:
-            gestureText = "SWIPE_DOWN";
+        case TurtleEngine::CSL::GestureType::ANNIHLAT:
+            gestureText = "ANNIHLAT";
             break;
-        case TurtleEngine::CSL::GestureType::CIRCLE:
-            gestureText = "CIRCLE";
-            break;
-        case TurtleEngine::CSL::GestureType::TAP:
-            gestureText = "TAP";
-            break;
-        case TurtleEngine::CSL::GestureType::DOUBLE_TAP:
-            gestureText = "DOUBLE_TAP";
+        case TurtleEngine::CSL::GestureType::TBD:
+            gestureText = "TBD";
             break;
         default:
             gestureText = "NONE";
@@ -69,9 +63,9 @@ void drawGestureFeedback(cv::Mat& frame, const TurtleEngine::CSL::GestureResult&
     // Draw the text
     cv::putText(frame, text, cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255), 2);
     
-    // Special handling for "annihilate" gesture (SWIPE_RIGHT with high confidence)
+    // Special handling for "annihilate" gesture (ANNIHLAT with high confidence)
     // Only show flare when gesture is nearly complete (at least 25 points, ~0.4s)
-    if (result.type == TurtleEngine::CSL::GestureType::SWIPE_RIGHT && 
+    if (result.type == TurtleEngine::CSL::GestureType::ANNIHLAT && 
         result.confidence >= 0.7f && 
         result.trajectory.size() >= 25) {
         
@@ -213,7 +207,7 @@ int main() {
     
     // Register a callback for gesture detection with dual logging
     csl.registerGestureCallback([&](const TurtleEngine::CSL::GestureResult& result) {
-        if (result.type == TurtleEngine::CSL::GestureType::SWIPE_RIGHT) {
+        if (result.type == TurtleEngine::CSL::GestureType::KHARGAIL) {
             // Track gesture start
             if (!gestureStarted && result.confidence >= 0.3f) {
                 gestureStarted = true;

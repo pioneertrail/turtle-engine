@@ -4,19 +4,20 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <chrono>
+#include <map>
+#include <fstream>
 
 namespace TurtleEngine {
 namespace CSL {
 
 enum class GestureType {
     NONE,
-    SWIPE_LEFT,
-    SWIPE_RIGHT,
-    SWIPE_UP,
-    SWIPE_DOWN,
-    CIRCLE,
-    TAP,
-    DOUBLE_TAP
+    KHARGAIL,    // Left-right charge
+    FLAMMIL,     // Right-down swipe
+    STASAI,      // Tight circle
+    ANNIHLAT,    // Right swipe down
+    TBD          // To be determined
 };
 
 struct GestureResult {
@@ -24,6 +25,15 @@ struct GestureResult {
     float confidence;
     cv::Point2f position;
     std::vector<cv::Point2f> trajectory;
+    std::chrono::high_resolution_clock::time_point timestamp;
+    float transitionLatency;  // Time since last gesture
+};
+
+struct ComboTransition {
+    GestureType from;
+    GestureType to;
+    float latency;
+    float confidence;
 };
 
 class GestureRecognizer {
@@ -42,24 +52,39 @@ public:
     void setMinConfidence(float confidence);
     float getMinConfidence() const { return m_minConfidence; }
 
+    // Combo and transition tracking
+    ComboTransition getLastTransition() const { return m_lastTransition; }
+    float getAverageTransitionLatency() const { return m_averageTransitionLatency; }
+    void resetTransitionStats();
+
 private:
     // Internal gesture recognition methods
-    GestureResult recognizeSwipe(const std::vector<cv::Point2f>& points);
-    GestureResult recognizeCircle(const std::vector<cv::Point2f>& points);
-    GestureResult recognizeTap(const std::vector<cv::Point2f>& points);
+    GestureResult recognizeKhargail(const std::vector<cv::Point2f>& points);
+    GestureResult recognizeFlammil(const std::vector<cv::Point2f>& points);
+    GestureResult recognizeStasai(const std::vector<cv::Point2f>& points);
+    GestureResult recognizeAnnihlat(const std::vector<cv::Point2f>& points);
 
     // Helper methods
     float calculateSwipeConfidence(const std::vector<cv::Point2f>& points, const cv::Point2f& direction);
     bool isCircle(const std::vector<cv::Point2f>& points);
-    bool isTap(const std::vector<cv::Point2f>& points);
+    void updateTransitionStats(const GestureResult& current, const GestureResult& previous);
+    void logGestureResult(const GestureResult& result);
 
     // Member variables
     float m_sensitivity;
     float m_minConfidence;
     std::vector<cv::Point2f> m_previousPoints;
-    cv::Point2f m_lastTapPosition;
-    double m_lastTapTime;
+    GestureResult m_lastGesture;
+    ComboTransition m_lastTransition;
+    float m_averageTransitionLatency;
+    std::chrono::high_resolution_clock::time_point m_lastGestureTime;
     bool m_initialized;
+    std::ofstream m_logFile;
+    
+    // New member variables for gesture-specific tracking
+    std::map<GestureType, float> m_gestureThresholds;
+    std::map<GestureType, int> m_gestureAttempts;
+    std::map<GestureType, int> m_gestureSuccesses;
 };
 
 } // namespace CSL
