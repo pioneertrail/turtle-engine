@@ -131,37 +131,43 @@ GestureResult GestureRecognizer::processSimulatedPoints(const std::vector<cv::Po
     GestureResult result = {GestureType::NONE, 0.0f, cv::Point2f(), points, startTime, 0.0f};
     std::cout << "Starting gesture recognition" << std::endl;
 
+    // --- REVISED RECOGNITION LOGIC --- 
+    GestureResult bestResult = result; // Keep track of the best result found so far
+
     auto khargailResult = recognizeKhargail(points);
     std::cout << "Khargail confidence: " << khargailResult.confidence << std::endl;
-    if (khargailResult.confidence > result.confidence) {
-        result = khargailResult;
-        m_gestureAttempts[GestureType::KHARGAIL]++;
+    if (khargailResult.confidence > bestResult.confidence) {
+        bestResult = khargailResult;
     }
+    if (khargailResult.type != GestureType::NONE) m_gestureAttempts[GestureType::KHARGAIL]++;
 
     auto flammilResult = recognizeFlammil(points);
     std::cout << "Flammil confidence: " << flammilResult.confidence << std::endl;
-    if (flammilResult.confidence > result.confidence) {
-        result = flammilResult;
-        m_gestureAttempts[GestureType::FLAMMIL]++;
+    if (flammilResult.confidence > bestResult.confidence) {
+        bestResult = flammilResult;
     }
+    if (flammilResult.type != GestureType::NONE) m_gestureAttempts[GestureType::FLAMMIL]++;
 
     auto stasaiResult = recognizeStasai(points);
     std::cout << "Stasai confidence: " << stasaiResult.confidence << std::endl;
-    if (stasaiResult.confidence > result.confidence) {
-        result = stasaiResult;
-        m_gestureAttempts[GestureType::STASAI]++;
+    if (stasaiResult.confidence > bestResult.confidence) {
+        bestResult = stasaiResult;
     }
+    if (stasaiResult.type != GestureType::NONE) m_gestureAttempts[GestureType::STASAI]++;
 
     auto annihlatResult = recognizeAnnihlat(points);
     std::cout << "Annihlat confidence: " << annihlatResult.confidence << std::endl;
-    if (annihlatResult.confidence > result.confidence) {
-        result = annihlatResult;
-        m_gestureAttempts[GestureType::ANNIHLAT]++;
+    if (annihlatResult.confidence > bestResult.confidence) {
+        bestResult = annihlatResult;
     }
+    if (annihlatResult.type != GestureType::NONE) m_gestureAttempts[GestureType::ANNIHLAT]++;
+    
+    // Assign the best result found
+    result = bestResult; 
 
-    std::cout << "Finished recognition, result type: " << static_cast<int>(result.type) << std::endl;
+    std::cout << "Finished recognition, best result type: " << static_cast<int>(result.type) << " with confidence: " << result.confidence << std::endl;
 
-    // Apply gesture-specific threshold and update stats
+    // Apply gesture-specific threshold and update stats for the final best result
     if (result.type != GestureType::NONE) {
         float threshold = m_gestureThresholds.count(result.type) ? m_gestureThresholds.at(result.type) : m_minConfidence;
         if (result.confidence >= threshold) {
@@ -343,42 +349,44 @@ void GestureRecognizer::resetTransitionStats() {
     }
 }
 
-float GestureRecognizer::calculateSwipeConfidence(const std::vector<cv::Point2f>& points, const cv::Point2f& direction) {
-    if (points.size() < 5) {
+float GestureRecognizer::calculateSwipeConfidence(const std::vector<cv::Point2f>& points, const cv::Point2f& expectedDirection) {
+    if (points.size() < 5) { // Keep minimum point requirement
         return 0.0f;
     }
     
-    // Calculate how straight the swipe is
-    float totalDeviation = 0.0f;
+    // Basic confidence based on some trajectory analysis (placeholder)
+    // A more sophisticated approach would analyze curvature, speed consistency etc.
+    float confidence = 0.8f; // Base confidence - lowered slightly to allow penalty room
+
+    // Calculate actual direction and length
     cv::Point2f start = points.front();
     cv::Point2f end = points.back();
-    float totalDistance = std::sqrt(
-        (end.x - start.x) * (end.x - start.x) + 
-        (end.y - start.y) * (end.y - start.y));
-    
-    if (totalDistance < 1.0f) {
-        return 0.0f;
+    cv::Point2f actualDirection = end - start;
+    float actualLength = std::sqrt(actualDirection.x * actualDirection.x + actualDirection.y * actualDirection.y);
+
+    // Normalize expected direction (assuming it might not be normalized)
+    cv::Point2f normalizedExpectedDirection = expectedDirection;
+    float expectedLength = std::sqrt(normalizedExpectedDirection.x * normalizedExpectedDirection.x + normalizedExpectedDirection.y * normalizedExpectedDirection.y);
+    if (expectedLength > 1e-6) { // Avoid division by zero
+         normalizedExpectedDirection.x /= expectedLength;
+         normalizedExpectedDirection.y /= expectedLength;
     }
-    
-    // Calculate the expected position for each point along the line
-    for (size_t i = 1; i < points.size() - 1; ++i) {
-        float t = static_cast<float>(i) / static_cast<float>(points.size() - 1);
-        cv::Point2f expectedPoint = start + t * (end - start);
-        
-        // Calculate the deviation from the expected point
-        float deviation = std::sqrt(
-            (points[i].x - expectedPoint.x) * (points[i].x - expectedPoint.x) + 
-            (points[i].y - expectedPoint.y) * (points[i].y - expectedPoint.y));
-        
-        totalDeviation += deviation;
+
+    // Calculate direction deviation penalty
+    if (actualLength > 1e-6) { // Avoid division by zero for actual direction
+        cv::Point2f normalizedActualDirection = actualDirection / actualLength;
+        // Dot product gives cosine of angle between directions (1 for parallel, 0 for perpendicular, -1 for opposite)
+        float dotProduct = normalizedActualDirection.x * normalizedExpectedDirection.x + normalizedActualDirection.y * normalizedExpectedDirection.y;
+        // Penalize confidence based on deviation. Clamp dot product to [0, 1] as penalty factor.
+        // We want high confidence only if directions align (dotProduct close to 1).
+        confidence *= std::max(0.0f, dotProduct);
+    } else {
+        // Very short or zero length trajectory, low confidence
+        confidence = 0.0f;
     }
-    
-    // Calculate the average deviation
-    float averageDeviation = totalDeviation / static_cast<float>(points.size() - 2);
-    
-    // Calculate the confidence based on the average deviation
-    // The smaller the deviation, the higher the confidence
-    float confidence = 1.0f - std::min(1.0f, averageDeviation / (50.0f * m_sensitivity));
+
+    // Add other factors? (e.g., penalty for excessive deviation from straight line)
+    // For now, focus on direction.
     
     return confidence;
 }
@@ -404,6 +412,21 @@ bool GestureRecognizer::isCircle(const std::vector<cv::Point2f>& points) {
     }
     avgRadius /= static_cast<float>(points.size());
     
+    // *** ADD CLOSURE CHECK ***
+    cv::Point2f startPoint = points.front();
+    cv::Point2f endPoint = points.back();
+    float closureDistance = std::sqrt(
+        (endPoint.x - startPoint.x) * (endPoint.x - startPoint.x) +
+        (endPoint.y - startPoint.y) * (endPoint.y - startPoint.y));
+
+    // Allow closure distance up to, e.g., 50% of the average radius
+    // Adjust this threshold as needed
+    float maxClosure = 0.5f * avgRadius; 
+    if (closureDistance > maxClosure) {
+        return false; // Not closed enough for a circle
+    }
+    // *** END CLOSURE CHECK ***
+
     // Calculate the standard deviation of the radius
     float radiusStdDev = 0.0f;
     for (const auto& point : points) {
