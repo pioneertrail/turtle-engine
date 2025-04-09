@@ -50,7 +50,7 @@ add_library(TurtleEngineCore
 # Performance optimization flags for gesture recognition and plasma effects
 # Apply only to Release configuration - AFTER add_library
 if(MSVC)
-    target_compile_options(TurtleEngineCore PRIVATE $<$<CONFIG:Release>:/O2 /fp:fast /arch:AVX2>)
+    target_compile_options(TurtleEngineCore PRIVATE $<$<CONFIG:Release>:/O1 /arch:AVX2>)
 else()
     target_compile_options(TurtleEngineCore PRIVATE $<$<CONFIG:Release>:-O3 -ffast-math -march=native>)
 endif()
