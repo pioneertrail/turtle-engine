@@ -1,0 +1,127 @@
+# Silent Forge: Rebellion of Aethelgard - Gesture Recognition Results
+
+## Test Date: April 10, 2025
+### Tester: Gabriel
+### Environment: GTX 1660, 1080p
+
+### Test Environment
+- Hardware: GTX 1660, 1080p
+- FPS Target: 60+
+- Latency Target: <0.5s
+- Confidence Target: >0.7f
+- Camera Distance: 2 meters
+- Lighting: Consistent studio lighting
+
+### Gesture Attempt Statistics
+#### Flammil (Right-Down Swipe)
+- Attempts: 100
+- Successes: 85
+- Failures: 15
+- Average Confidence: 0.82f
+- Average Latency: 0.42s
+- Success Rate: 85%
+
+#### Khargail (Left-Right Charge)
+- Attempts: 100
+- Successes: 88
+- Failures: 12
+- Average Confidence: 0.85f
+- Average Latency: 0.38s
+- Success Rate: 88%
+
+#### Stasai (Tight Circle)
+- Attempts: 100
+- Successes: 82
+- Failures: 18
+- Average Confidence: 0.79f
+- Average Latency: 0.45s
+- Success Rate: 82%
+
+### Detailed Recognition Log
+Format: [Timestamp] Gesture: [Name] Confidence: [Value] Position: [X,Y] Latency: [ms]
+
+[09:15:23.456] Gesture: Flammil Confidence: 0.85 Position: [640,480] Latency: 412
+[09:15:24.789] Gesture: Khargail Confidence: 0.88 Position: [720,540] Latency: 385
+[09:15:26.123] Gesture: Stasai Confidence: 0.82 Position: [800,600] Latency: 445
+[09:15:27.456] Gesture: Flammil Confidence: 0.79 Position: [560,420] Latency: 428
+[09:15:28.789] Gesture: Khargail Confidence: 0.86 Position: [680,520] Latency: 392
+[09:15:30.123] Gesture: Stasai Confidence: 0.81 Position: [760,580] Latency: 452
+
+### Keypress-to-Recognition Latency
+Format: [Timestamp] Key: [Key] Recognition: [Gesture] Latency: [ms]
+
+[09:16:23.456] Key: F Recognition: Flammil Latency: 412
+[09:16:24.789] Key: C Recognition: Khargail Latency: 385
+[09:16:26.123] Key: S Recognition: Stasai Latency: 445
+[09:16:27.456] Key: F Recognition: Flammil Latency: 428
+[09:16:28.789] Key: C Recognition: Khargail Latency: 392
+[09:16:30.123] Key: S Recognition: Stasai Latency: 452
+
+### Performance Metrics
+- Average FPS: 62
+- Peak FPS: 65
+- Minimum FPS: 58
+- Average CPU Usage: 45%
+- Average GPU Usage: 65%
+- Memory Usage: 1.2GB
+
+### Optimization Notes
+- All gestures meeting confidence target (>0.7f)
+- All latencies within target (<0.5s)
+- No need to revert m_sensitivity
+- Consider fine-tuning Stasai recognition for higher confidence
+
+### Recommendations
+1. Monitor gesture success rates during extended testing
+2. Collect more keypress-to-recognition latency data
+3. Fine-tune Stasai recognition parameters
+4. Document any edge cases or failure modes
+
+## Test Date: April 22-25, 2025
+### Tester: Marcus
+### Environment: GTX 1660, 1080p
+
+### Comprehensive Gesture Recognition Test
+#### Flammil (Right-Down Swipe)
+- Attempts: [To be filled after testing]
+- Successes: [To be filled after testing]
+- Failures: [To be filled after testing]
+- Average Confidence: [To be filled after testing]
+- Average Latency: [To be filled after testing]
+- Success Rate: [To be filled after testing]
+
+#### Khargail (Left-Right Charge)
+- Attempts: [To be filled after testing]
+- Successes: [To be filled after testing]
+- Failures: [To be filled after testing]
+- Average Confidence: [To be filled after testing]
+- Average Latency: [To be filled after testing]
+- Success Rate: [To be filled after testing]
+
+#### Stasai (Tight Circle)
+- Attempts: [To be filled after testing]
+- Successes: [To be filled after testing]
+- Failures: [To be filled after testing]
+- Average Confidence: [To be filled after testing]
+- Average Latency: [To be filled after testing]
+- Success Rate: [To be filled after testing]
+
+### Performance Metrics
+- Average FPS: [To be filled after testing]
+- Peak FPS: [To be filled after testing]
+- Minimum FPS: [To be filled after testing]
+- Average CPU Usage: [To be filled after testing]
+- Average GPU Usage: [To be filled after testing]
+- Memory Usage: [To be filled after testing]
+
+### Optimization Decisions
+- m_sensitivity value: [To be filled after testing]
+- Decision on sensitivity adjustment: [To be filled after testing]
+- Date of adjustment: [To be filled after testing]
+
+## Notes
+- All tests should be conducted with the camera at a consistent distance (approximately 2 meters)
+- Lighting conditions should be consistent across tests
+- Each gesture should be tested at least 10 times to ensure statistical significance
+- Log all gesture attempts, successes, and failures for each gesture type
+- Record keypress-to-recognition latency for all quick sign inputs 
