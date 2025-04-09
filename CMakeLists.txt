@@ -6,23 +6,21 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Set global output directories
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
 # Build type and optimization settings
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
-endif()
-
-# Performance optimization flags for gesture recognition and plasma effects
-if(MSVC)
-    add_compile_options(/O2 /fp:fast /arch:AVX2)
-else()
-    add_compile_options(-O3 -ffast-math -march=native)
 endif()
 
 # OpenCV optimization options
 option(WITH_OPENMP "Enable OpenMP support" ON)
 option(ENABLE_FAST_MATH "Enable fast math optimizations" ON)
 option(WITH_CUDA "Enable CUDA support if available" ON)
-option(BUILD_TESTS "Build test suite" OFF)
+option(BUILD_TESTS "Build test suite" ON)
 
 # Find required packages
 find_package(OpenGL REQUIRED)
@@ -49,6 +47,14 @@ add_library(TurtleEngineCore
     src/engine/src/csl/CSLSystem.cpp
 )
 
+# Performance optimization flags for gesture recognition and plasma effects
+# Apply only to Release configuration - AFTER add_library
+if(MSVC)
+    target_compile_options(TurtleEngineCore PRIVATE $<$<CONFIG:Release>:/O2 /fp:fast /arch:AVX2>)
+else()
+    target_compile_options(TurtleEngineCore PRIVATE $<$<CONFIG:Release>:-O3 -ffast-math -march=native>)
+endif()
+
 target_include_directories(TurtleEngineCore PUBLIC
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/src/engine/include
@@ -69,11 +75,16 @@ add_executable(${PROJECT_NAME} src/main.cpp)
 target_link_libraries(${PROJECT_NAME} PRIVATE TurtleEngineCore)
 
 # Copy shader files to build directory
-file(COPY ${CMAKE_SOURCE_DIR}/shaders DESTINATION ${CMAKE_BINARY_DIR})
+file(COPY ${CMAKE_SOURCE_DIR}/shaders DESTINATION ${CMAKE_BINARY_DIR}/bin) # Copy shaders to bin where executables are
+
+# Set output directories *before* targets are defined if needed globally
+# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin) # Keep this commented/removed if only tests go to bin
 
 if(BUILD_TESTS)
     enable_testing()
-    
+    # Set output directory specifically for tests *before* add_executable
+    # set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
     # Add CSL Animation System test with optimizations
     add_executable(CSLTest src/tests/CSLTest.cpp)
     target_link_libraries(CSLTest PRIVATE TurtleEngineCore)
@@ -131,7 +142,7 @@ if(OpenCV_BIN_DIR AND EXISTS "${OpenCV_BIN_DIR}") # Check if vcpkg provided the 
     endforeach()
 endif()
 
-# Set output directories
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib) 
+# Set output directories for main targets (redundant if set globally)
+# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin) # Let's ensure this is set correctly outside the test block too
+# set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+# set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib) 

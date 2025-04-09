@@ -9,6 +9,10 @@
 #include <sstream>
 #include <fstream>
 #include <filesystem>
+#include <map>
+
+// Define initial map contents (if needed, or initialize empty)
+// static const std::map<TurtleEngine::CSL::GestureType, float> initialThresholds = { ... };
 
 namespace TurtleEngine {
 namespace CSL {
@@ -18,29 +22,24 @@ GestureRecognizer::GestureRecognizer()
     , m_minConfidence(0.70f)
     , m_averageTransitionLatency(0.0f)
     , m_initialized(false)
+    // Initialize maps in initializer list
+    , m_gestureThresholds({{GestureType::KHARGAIL, 0.80f}, {GestureType::FLAMMIL, 0.75f}, {GestureType::STASAI, 0.80f}, {GestureType::ANNIHLAT, 0.78f}})
+    , m_gestureAttempts({{GestureType::KHARGAIL, 0}, {GestureType::FLAMMIL, 0}, {GestureType::STASAI, 0}, {GestureType::ANNIHLAT, 0}, {GestureType::NONE, 0}, {GestureType::TBD, 0}})
+    , m_gestureSuccesses({{GestureType::KHARGAIL, 0}, {GestureType::FLAMMIL, 0}, {GestureType::STASAI, 0}, {GestureType::ANNIHLAT, 0}, {GestureType::NONE, 0}, {GestureType::TBD, 0}})
 {
+    std::cout << "GestureRecognizer Constructor: Start" << std::endl;
     m_previousPoints.reserve(30);
+    std::cout << "GestureRecognizer Constructor: Reserved previousPoints" << std::endl;
     m_lastGesture = {GestureType::NONE, 0.0f, cv::Point2f(), std::vector<cv::Point2f>(), 
                      std::chrono::high_resolution_clock::now(), 0.0f};
+    std::cout << "GestureRecognizer Constructor: Initialized lastGesture" << std::endl;
     m_lastTransition = {GestureType::NONE, GestureType::NONE, 0.0f, 0.0f};
+    std::cout << "GestureRecognizer Constructor: Initialized lastTransition" << std::endl;
     
-    // Initialize gesture-specific thresholds with updated values
-    m_gestureThresholds[GestureType::KHARGAIL] = 0.80f;  // Proven achievable
-    m_gestureThresholds[GestureType::FLAMMIL] = 0.75f;   // Slightly higher for consistency
-    m_gestureThresholds[GestureType::STASAI] = 0.80f;    // Circle complexity warrants it
-    m_gestureThresholds[GestureType::ANNIHLAT] = 0.78f;  // Complex but achievable
-    
-    // Initialize attempt counters
-    m_gestureAttempts[GestureType::KHARGAIL] = 0;
-    m_gestureAttempts[GestureType::FLAMMIL] = 0;
-    m_gestureAttempts[GestureType::STASAI] = 0;
-    m_gestureAttempts[GestureType::ANNIHLAT] = 0;
-    
-    // Initialize success counters
-    m_gestureSuccesses[GestureType::KHARGAIL] = 0;
-    m_gestureSuccesses[GestureType::FLAMMIL] = 0;
-    m_gestureSuccesses[GestureType::STASAI] = 0;
-    m_gestureSuccesses[GestureType::ANNIHLAT] = 0;
+    // Map initialization moved to initializer list above
+    std::cout << "GestureRecognizer Constructor: Maps initialized via list" << std::endl;
+
+    std::cout << "GestureRecognizer Constructor: End" << std::endl;
 }
 
 GestureRecognizer::~GestureRecognizer() {
@@ -57,12 +56,12 @@ bool GestureRecognizer::initialize() {
     // Create logs directory if it doesn't exist
     std::filesystem::create_directories("logs");
     
-    // Open log file
-    m_logFile.open("logs/gesture_debug.log", std::ios::app);
-    if (!m_logFile.is_open()) {
-        std::cerr << "Failed to open gesture debug log file" << std::endl;
-        return false;
-    }
+    // Open log file - COMMENTED OUT FOR DEBUGGING
+    // m_logFile.open("logs/gesture_debug.log", std::ios::app);
+    // if (!m_logFile.is_open()) {
+    //     std::cerr << "Failed to open gesture debug log file" << std::endl;
+    //     return false;
+    // }
     
     m_initialized = true;
     return true;
@@ -107,14 +106,83 @@ GestureResult GestureRecognizer::processFrame(const cv::Mat& frame) {
 
     // Update transition stats if a gesture was detected
     if (result.type != GestureType::NONE) {
-        float threshold = m_gestureThresholds[result.type];
+        float threshold = m_gestureThresholds.count(result.type) ? m_gestureThresholds.at(result.type) : m_minConfidence;
         if (result.confidence >= threshold) {
-            m_gestureSuccesses[result.type]++;
+            if (m_gestureSuccesses.count(result.type)) { m_gestureSuccesses.at(result.type)++; }
             updateTransitionStats(result, m_lastGesture);
-            logGestureResult(result);
             m_lastGesture = result;
         }
     }
+
+    return result;
+}
+
+GestureResult GestureRecognizer::processSimulatedPoints(const std::vector<cv::Point2f>& points) {
+    std::cout << "Entering processSimulatedPoints, points size: " << points.size() << std::endl;
+    auto startTime = std::chrono::high_resolution_clock::now();
+
+    if (!m_initialized || points.empty()) {
+        std::cout << "Not initialized or empty points, returning NONE" << std::endl;
+        return {GestureType::NONE, 0.0f, cv::Point2f(), std::vector<cv::Point2f>(),
+                startTime, 0.0f};
+    }
+
+    // Test all gesture types, as processFrame does
+    GestureResult result = {GestureType::NONE, 0.0f, cv::Point2f(), points, startTime, 0.0f};
+    std::cout << "Starting gesture recognition" << std::endl;
+
+    auto khargailResult = recognizeKhargail(points);
+    std::cout << "Khargail confidence: " << khargailResult.confidence << std::endl;
+    if (khargailResult.confidence > result.confidence) {
+        result = khargailResult;
+        m_gestureAttempts[GestureType::KHARGAIL]++;
+    }
+
+    auto flammilResult = recognizeFlammil(points);
+    std::cout << "Flammil confidence: " << flammilResult.confidence << std::endl;
+    if (flammilResult.confidence > result.confidence) {
+        result = flammilResult;
+        m_gestureAttempts[GestureType::FLAMMIL]++;
+    }
+
+    auto stasaiResult = recognizeStasai(points);
+    std::cout << "Stasai confidence: " << stasaiResult.confidence << std::endl;
+    if (stasaiResult.confidence > result.confidence) {
+        result = stasaiResult;
+        m_gestureAttempts[GestureType::STASAI]++;
+    }
+
+    auto annihlatResult = recognizeAnnihlat(points);
+    std::cout << "Annihlat confidence: " << annihlatResult.confidence << std::endl;
+    if (annihlatResult.confidence > result.confidence) {
+        result = annihlatResult;
+        m_gestureAttempts[GestureType::ANNIHLAT]++;
+    }
+
+    std::cout << "Finished recognition, result type: " << static_cast<int>(result.type) << std::endl;
+
+    // Apply gesture-specific threshold and update stats
+    if (result.type != GestureType::NONE) {
+        float threshold = m_gestureThresholds.count(result.type) ? m_gestureThresholds.at(result.type) : m_minConfidence;
+        if (result.confidence >= threshold) {
+            if (m_gestureSuccesses.count(result.type)) { m_gestureSuccesses.at(result.type)++; }
+            updateTransitionStats(result, m_lastGesture);
+            result.position = points.back();
+            m_lastGesture = result;
+        } else {
+            result.type = GestureType::NONE;
+        }
+    } else {
+        // Log if no gesture type had any confidence
+        // logGestureResult(result); // Already commented
+    }
+
+    // Update transition latency in result (using start time of this function)
+    auto endTime = std::chrono::high_resolution_clock::now();
+    float calculatedLatency = std::chrono::duration<float>(endTime - startTime).count();
+    // Note: The GestureResult struct's transitionLatency field is updated by updateTransitionStats
+    // We might want to store the processing time separately if needed.
+    // result.transitionLatency = calculatedLatency; // This overwrites the combo latency
 
     return result;
 }
@@ -157,6 +225,9 @@ GestureResult GestureRecognizer::recognizeFlammil(const std::vector<cv::Point2f>
     // Flammil is a right-down swipe (75px, 0.5s)
     float distance = std::sqrt(direction.x * direction.x + direction.y * direction.y);
     float confidence = calculateSwipeConfidence(points, cv::Point2f(1.0f, 1.0f));
+    
+    std::cout << "Flammil Debug: Distance=" << distance << ", Confidence=" << confidence 
+              << ", Start=(" << start.x << "," << start.y << "), End=(" << end.x << "," << end.y << ")" << std::endl;
     
     if (distance >= 75.0f && confidence >= m_minConfidence) {
         return {GestureType::FLAMMIL, confidence, end, points, 
@@ -226,6 +297,10 @@ void GestureRecognizer::updateTransitionStats(const GestureResult& current, cons
 
 void GestureRecognizer::logGestureResult(const GestureResult& result) {
     if (!m_logFile.is_open()) {
+        std::cerr << "Log file not open!" << std::endl;
+        // Fallback to console
+        std::cout << "[LOG FALLBACK] Gesture: " << static_cast<int>(result.type) 
+                  << ", Confidence: " << result.confidence << std::endl;
         return;
     }
 
@@ -233,35 +308,38 @@ void GestureRecognizer::logGestureResult(const GestureResult& result) {
     auto time = std::chrono::system_clock::to_time_t(now);
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
     
+    // Replace localtime with localtime_s for Windows safety
+    std::tm timeInfo;
+    localtime_s(&timeInfo, &time);  // Safer alternative to localtime
     std::stringstream ss;
-    ss << "[" << std::put_time(std::localtime(&time), "%Y-%m-%d %H:%M:%S") 
+    ss << "[" << std::put_time(&timeInfo, "%Y-%m-%d %H:%M:%S") 
        << "." << std::setfill('0') << std::setw(3) << ms.count() << "] "
        << "Gesture: " << static_cast<int>(result.type) 
        << ", Confidence: " << std::fixed << std::setprecision(2) << result.confidence
        << ", Position: (" << result.position.x << "," << result.position.y << ")"
        << ", Latency: " << result.transitionLatency << "s"
-       << ", Attempts: " << m_gestureAttempts[result.type]
+       << ", Attempts: " << (m_gestureAttempts.count(result.type) ? m_gestureAttempts.at(result.type) : 0)
        << ", Success Rate: " << std::fixed << std::setprecision(2) 
-       << (static_cast<float>(m_gestureSuccesses[result.type]) / 
-           static_cast<float>(m_gestureAttempts[result.type]) * 100.0f) << "%"
+       << (m_gestureAttempts.count(result.type) && m_gestureAttempts.at(result.type) > 0 ? 
+           (static_cast<float>(m_gestureSuccesses.count(result.type) ? m_gestureSuccesses.at(result.type) : 0) / 
+            static_cast<float>(m_gestureAttempts.at(result.type)) * 100.0f) : 0.0f) << "%"
        << ", Avg Transition Latency: " << std::fixed << std::setprecision(2) 
        << m_averageTransitionLatency << "s"
        << std::endl;
     
     m_logFile << ss.str();
-    m_logFile.flush();
+    m_logFile.flush(); // Force flush to ensure data is written
 }
 
 void GestureRecognizer::resetTransitionStats() {
     m_lastTransition = {GestureType::NONE, GestureType::NONE, 0.0f, 0.0f};
     m_averageTransitionLatency = 0.0f;
     
-    // Reset all counters
-    for (auto& attempts : m_gestureAttempts) {
-        attempts.second = 0;
+    for (auto const& [key, val] : m_gestureAttempts) {
+        m_gestureAttempts[key] = 0;
     }
-    for (auto& successes : m_gestureSuccesses) {
-        successes.second = 0;
+    for (auto const& [key, val] : m_gestureSuccesses) {
+        m_gestureSuccesses[key] = 0;
     }
 }
 

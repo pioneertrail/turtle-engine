@@ -57,6 +57,9 @@ public:
     float getAverageTransitionLatency() const { return m_averageTransitionLatency; }
     void resetTransitionStats();
 
+    // Add for test simulation
+    GestureResult processSimulatedPoints(const std::vector<cv::Point2f>& points);
+
 private:
     // Internal gesture recognition methods
     GestureResult recognizeKhargail(const std::vector<cv::Point2f>& points);
@@ -79,7 +82,7 @@ private:
     float m_averageTransitionLatency;
     std::chrono::high_resolution_clock::time_point m_lastGestureTime;
     bool m_initialized;
-    std::ofstream m_logFile;
+    std::ofstream m_logFile; // Uncommented
     
     // New member variables for gesture-specific tracking
     std::map<GestureType, float> m_gestureThresholds;
