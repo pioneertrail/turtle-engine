@@ -1,0 +1,55 @@
+[2025-04-09 11:39:27.562] Starting CSL Test Application
+OpenCV version: 4.8.0
+Working directory: "C:\\Users\\HydraPony\\1337 h4x0r\\Mengin"
+Log directory: "C:\\Users\\HydraPony\\1337 h4x0r\\Mengin\\logs"
+[2025-04-09 11:42:20.516] Starting CSL Test Application
+OpenCV version: 4.8.0
+Working directory: "C:\\Users\\HydraPony\\1337 h4x0r\\Mengin"
+Log directory: "C:\\Users\\HydraPony\\1337 h4x0r\\Mengin\\logs"
+[2025-04-09 11:43:09] Camera parameters set successfully
+[2025-04-09 20:47:20.619] Gesture: 1, Confidence: 0.80, Position: (577.12,359.74), Latency: 0.00s, Attempts: 1, Success Rate: 100.00%, Avg Transition Latency: 0.00s
+[2025-04-09 20:47:20.666] Gesture: 2, Confidence: 0.80, Position: (715.88,290.51), Latency: 0.00s, Attempts: 1, Success Rate: 100.00%, Avg Transition Latency: 0.01s
+[2025-04-09 20:47:20.762] Gesture: 1, Confidence: 0.80, Position: (578.90,358.74), Latency: 0.00s, Attempts: 1, Success Rate: 100.00%, Avg Transition Latency: 0.01s
+[2025-04-09 20:47:20.804] Gesture: 2, Confidence: 0.80, Position: (714.25,291.11), Latency: 0.00s, Attempts: 1, Success Rate: 100.00%, Avg Transition Latency: 0.02s
+[2025-04-09 20:47:20.905] Gesture: 1, Confidence: 0.80, Position: (576.50,359.01), Latency: 0.00s, Attempts: 1, Success Rate: 100.00%, Avg Transition Latency: 0.01s
+[2025-04-09 20:47:20.944] Gesture: 2, Confidence: 0.80, Position: (715.51,290.39), Latency: 0.00s, Attempts: 1, Success Rate: 100.00%, Avg Transition Latency: 0.02s
+[2025-04-09 20:48:10.476] Gesture: 1, Confidence: 0.80, Position: (503.73,230.34), Latency: 0.00s, Attempts: 1, Success Rate: 100.00%, Avg Transition Latency: 0.00s
+[2025-04-09 20:48:10.551] Gesture: 1, Confidence: 0.80, Position: (521.78,244.90), Latency: 0.00s, Attempts: 2, Success Rate: 100.00%, Avg Transition Latency: 0.01s
+[2025-04-09 20:48:10.590] Gesture: 1, Confidence: 0.80, Position: (513.45,234.75), Latency: 0.00s, Attempts: 3, Success Rate: 100.00%, Avg Transition Latency: 0.02s
+[2025-04-09 20:48:10.627] Gesture: 1, Confidence: 0.80, Position: (505.17,243.57), Latency: 0.00s, Attempts: 4, Success Rate: 100.00%, Avg Transition Latency: 0.02s
+[2025-04-09 20:48:10.658] Gesture: 1, Confidence: 0.80, Position: (504.89,247.03), Latency: 0.00s, Attempts: 5, Success Rate: 100.00%, Avg Transition Latency: 0.03s
+[2025-04-09 20:48:10.696] Gesture: 1, Confidence: 0.80, Position: (519.75,245.84), Latency: 0.00s, Attempts: 6, Success Rate: 100.00%, Avg Transition Latency: 0.03s
+[2025-04-09 20:48:10.738] Gesture: 1, Confidence: 0.80, Position: (514.50,248.20), Latency: 0.00s, Attempts: 7, Success Rate: 100.00%, Avg Transition Latency: 0.03s
+[2025-04-09 20:48:10.778] Gesture: 1, Confidence: 0.80, Position: (518.31,243.35), Latency: 0.00s, Attempts: 8, Success Rate: 100.00%, Avg Transition Latency: 0.04s
+[2025-04-09 20:48:10.814] Gesture: 1, Confidence: 0.80, Position: (506.98,230.52), Latency: 0.00s, Attempts: 9, Success Rate: 100.00%, Avg Transition Latency: 0.04s
+[2025-04-09 20:48:10.850] Gesture: 1, Confidence: 0.80, Position: (516.28,247.21), Latency: 0.00s, Attempts: 10, Success Rate: 100.00%, Avg Transition Latency: 0.04s
+[2025-04-09 20:48:10.884] Gesture: 2, Confidence: 0.75, Position: (517.17,328.46), Latency: 0.00s, Attempts: 11, Success Rate: 9.09%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:10.920] Gesture: 2, Confidence: 0.76, Position: (508.27,333.64), Latency: 0.00s, Attempts: 12, Success Rate: 16.67%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:10.950] Gesture: 2, Confidence: 0.76, Position: (512.94,336.35), Latency: 0.00s, Attempts: 13, Success Rate: 23.08%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:10.992] Gesture: 2, Confidence: 0.75, Position: (518.44,331.20), Latency: 0.00s, Attempts: 14, Success Rate: 28.57%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.029] Gesture: 2, Confidence: 0.75, Position: (507.59,328.73), Latency: 0.00s, Attempts: 15, Success Rate: 33.33%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.064] Gesture: 2, Confidence: 0.76, Position: (502.95,326.37), Latency: 0.00s, Attempts: 16, Success Rate: 37.50%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.099] Gesture: 2, Confidence: 0.77, Position: (508.11,339.59), Latency: 0.00s, Attempts: 17, Success Rate: 41.18%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.131] Gesture: 2, Confidence: 0.76, Position: (519.94,336.91), Latency: 0.00s, Attempts: 18, Success Rate: 44.44%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.164] Gesture: 2, Confidence: 0.76, Position: (509.25,334.63), Latency: 0.00s, Attempts: 19, Success Rate: 47.37%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.197] Gesture: 2, Confidence: 0.76, Position: (512.34,329.00), Latency: 0.00s, Attempts: 20, Success Rate: 50.00%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.233] Gesture: 3, Confidence: 0.80, Position: (393.24,248.10), Latency: 0.00s, Attempts: 1, Success Rate: 100.00%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.266] Gesture: 3, Confidence: 0.80, Position: (390.75,232.50), Latency: 0.00s, Attempts: 2, Success Rate: 100.00%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.299] Gesture: 3, Confidence: 0.80, Position: (382.64,233.25), Latency: 0.00s, Attempts: 3, Success Rate: 100.00%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.334] Gesture: 3, Confidence: 0.80, Position: (398.22,233.04), Latency: 0.00s, Attempts: 4, Success Rate: 100.00%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.370] Gesture: 3, Confidence: 0.80, Position: (399.70,242.90), Latency: 0.00s, Attempts: 5, Success Rate: 100.00%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.404] Gesture: 3, Confidence: 0.80, Position: (397.38,237.16), Latency: 0.00s, Attempts: 6, Success Rate: 100.00%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.441] Gesture: 3, Confidence: 0.80, Position: (397.99,237.73), Latency: 0.00s, Attempts: 7, Success Rate: 100.00%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.475] Gesture: 3, Confidence: 0.80, Position: (400.58,246.11), Latency: 0.00s, Attempts: 8, Success Rate: 100.00%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.511] Gesture: 3, Confidence: 0.80, Position: (397.59,248.46), Latency: 0.00s, Attempts: 9, Success Rate: 100.00%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.545] Gesture: 3, Confidence: 0.80, Position: (397.26,236.71), Latency: 0.00s, Attempts: 10, Success Rate: 100.00%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.580] Gesture: 4, Confidence: 0.75, Position: (506.86,150.79), Latency: 0.00s, Attempts: 21, Success Rate: 4.76%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.615] Gesture: 4, Confidence: 0.76, Position: (507.26,147.43), Latency: 0.00s, Attempts: 22, Success Rate: 9.09%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.649] Gesture: 4, Confidence: 0.75, Position: (519.94,151.05), Latency: 0.00s, Attempts: 23, Success Rate: 13.04%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.683] Gesture: 4, Confidence: 0.76, Position: (518.95,144.03), Latency: 0.00s, Attempts: 24, Success Rate: 16.67%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.715] Gesture: 4, Confidence: 0.75, Position: (516.32,142.97), Latency: 0.00s, Attempts: 25, Success Rate: 20.00%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.748] Gesture: 4, Confidence: 0.76, Position: (510.67,144.49), Latency: 0.00s, Attempts: 26, Success Rate: 23.08%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.781] Gesture: 4, Confidence: 0.76, Position: (504.42,146.01), Latency: 0.00s, Attempts: 27, Success Rate: 25.93%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.817] Gesture: 4, Confidence: 0.75, Position: (502.24,152.17), Latency: 0.00s, Attempts: 28, Success Rate: 28.57%, Avg Transition Latency: 0.04s
+[2025-04-09 20:48:11.858] Gesture: 4, Confidence: 0.75, Position: (517.38,153.65), Latency: 0.00s, Attempts: 29, Success Rate: 31.03%, Avg Transition Latency: 0.05s
+[2025-04-09 20:48:11.899] Gesture: 4, Confidence: 0.75, Position: (515.19,144.13), Latency: 0.00s, Attempts: 30, Success Rate: 33.33%, Avg Transition Latency: 0.05s

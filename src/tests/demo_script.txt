@@ -1,0 +1,60 @@
+# Silent Forge: Rebellion of Aethelgard
+# CSL Animation System Demo Script
+# April 11, 2025 - 2:00 PM UTC
+
+## Introduction (2:00 PM UTC)
+"Witness Aethelgard's defiance."
+
+## Demo Steps
+1. Open CSLTest application
+2. Perform "annihilate" gesture three times:
+   - Right swipe with downward motion
+   - Watch the green pulse trace the path
+   - Observe the red flare burst at the end
+   - Pause briefly between gestures (2-3 seconds)
+3. Share GestureTest statistics:
+   - "Accuracy >90%, forged true."
+   - Cite specific numbers (e.g., "9/10, 92%")
+
+## Technical Notes
+- Gesture parameters tuned to Anya's keyframes:
+  - 0.0s: Arms raised (x: 20% width, y: 20% height)
+  - 0.3s: Right arm down (x: 60% width, y: 50% height)
+  - 0.5s: Fists meet (x: 50% width, y: 70% height), 75-pixel arc
+- Sensitivity: 1.1f (temporarily increased for testing)
+- Visual effects:
+  - Green pulse: Slower rhythm (5.0f sine, 400.0f time)
+  - Red flare: Triggered at 25 points (~0.4s)
+  - Pulse cohesion: Fades as flare peaks
+
+## Presentation Tips
+- Stand confidently - this is Aethelgard's moment
+- Speak clearly and with conviction
+- Emphasize the visual cohesion between pulse and flare
+- If asked about sensitivity, explain it was tuned based on testing
+- Mention Elena's plasma effects will be integrated by April 12
+
+## Handling Potential Issues
+- If a gesture fails (confidence < 0.7f):
+  - Smile and say: "Even rebels refine their fire"
+  - Try again with a slightly more deliberate motion
+  - Focus on the downward component (y > 0.45f)
+- If asked about accuracy below 90%:
+  - Acknowledge it's a work in progress
+  - Mention the sensitivity tuning process
+  - Highlight the visual cohesion as the key achievement
+
+## Handling Questions Beyond Demo Scope
+- For questions about future gestures (circles, taps):
+  - "Our forge burns on - more gestures join our rebellion soon"
+- For questions about performance optimization:
+  - "We've tuned for the Flammyx's strike - further refinement awaits"
+- For questions about integration with other systems:
+  - "Elena's plasma joins tomorrow - our visual tale grows"
+- For any other technical questions:
+  - "Our forge burns on - I'll share details after the demo"
+
+## Post-Demo Tasks
+- Log results in gesture_recognition_results.txt
+- Test with Elena's plasma effects by April 12
+- Finalize visual cohesion between pulse and flare 

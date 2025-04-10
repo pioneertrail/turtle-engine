@@ -1,0 +1,67 @@
+# Silent Forge: Rebellion of Aethelgard
+# Gesture Recognition Results Log
+# April 11, 2025
+
+## Trial Run (April 10, 2025, Evening)
+- Sensitivity 1.1f:
+  - Attempt 1 confidence: 
+  - Attempt 2 confidence: 
+  - Attempt 3 confidence: 
+- Notes: 
+- Recommendation for 10:00 AM UTC: [Test 1.0f recommended/Keep 1.1f]
+
+## Test Parameters
+- Date: April 11, 2025
+- Time: 10:00 AM UTC
+- Application: CSLTest
+- Gesture: "annihilate" (SWIPE_RIGHT with downward component)
+- Sensitivity: 1.1f (temporarily increased from 1.0f)
+- Downward heft threshold: y > 0.45f
+- Duration check: 0.4s-0.6s (25-37 points at 60 FPS)
+
+## Testing Instructions (10:00 AM UTC)
+1. Run CSLTest and perform three "annihilate" gestures
+2. Record confidence values for each attempt
+3. If confidence < 0.7f for ANY attempt, test with sensitivity 1.0f by 11:00 AM UTC
+   - Update GestureRecognizer constructor to revert to 1.0f
+   - Add comment: "Reverted post-test due to low confidence"
+4. Run GestureTest (10 attempts) and record accuracy statistics
+5. Document any visual issues with pulse cohesion
+
+## Results
+[Results will be logged here after testing]
+
+## Accuracy Statistics
+- Total attempts: 
+- Successful recognitions: 
+- Accuracy percentage: 
+- Average confidence: 
+
+## Sensitivity Testing
+- With sensitivity 1.1f:
+  - Attempt 1 confidence: 
+  - Attempt 2 confidence: 
+  - Attempt 3 confidence: 
+  - Decision: [Keep 1.1f or revert to 1.0f] - MUST DECIDE BY 11:00 AM UTC
+- With sensitivity 1.0f (if tested):
+  - Attempt 1 confidence: 
+  - Attempt 2 confidence: 
+  - Attempt 3 confidence: 
+- Final decision: [Keep 1.1f or revert to 1.0f]
+- Notes on sensitivity decision: 
+
+## Visual Feedback
+- Green pulse: Slower rhythm (5.0f sine, 400.0f time)
+- Red flare: Triggered at 25 points (~0.4s)
+- Pulse cohesion: Fades as flare peaks
+- Pulse cohesion evaluation: [Good/Fair/Poor]
+- Notes on visual cohesion: 
+- If "Fair" or "Poor", note for April 12 tweak with pulse *= (1.0f - flareIntensity * 1.2f)
+
+## Post-Demo Tasks (April 12)
+- Test with Elena's plasma effects (10:00 AM UTC)
+- Evaluate pulse cohesion with plasma:
+  - Does pulse fade completely as flare peaks?
+  - If not, test with pulse *= (1.0f - flareIntensity * 1.2f)
+- Finalize visual cohesion between pulse and flare
+- Document final adjustments in this log 

@@ -2,6 +2,7 @@
 build/
 bin/
 lib/
+<<<<<<< HEAD
 out/
 
 # CMake files
@@ -9,10 +10,13 @@ CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 compile_commands.json
+=======
+>>>>>>> feature/step2-latency-opt
 
 # IDE files
 .vs/
 .vscode/
+<<<<<<< HEAD
 *.swp
 *.swo
 .idea/
@@ -64,3 +68,36 @@ xml/
 doxygen_sqlite3.db
 *.tmp
 *.bak 
+=======
+*.user
+*.suo
+*.sln
+*.vcxproj
+*.vcxproj.filters
+
+# Compiled files
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Log files
+logs/
+*.log
+
+# Dependencies
+vcpkg/
+opencv/
+
+# CMake files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# OS files
+.DS_Store
+Thumbs.db 
+>>>>>>> feature/step2-latency-opt
