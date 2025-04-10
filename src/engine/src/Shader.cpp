@@ -20,15 +20,38 @@ bool Shader::loadFromFiles(const std::string& vertexPath, const std::string& fra
     std::ifstream vShaderFile;
     std::ifstream fShaderFile;
 
-    vShaderFile.open(vertexPath);
-    fShaderFile.open(fragmentPath);
-    std::stringstream vShaderStream, fShaderStream;
+    vShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+    fShaderFile.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+    try {
+        vShaderFile.open(vertexPath);
+        fShaderFile.open(fragmentPath);
+        std::stringstream vShaderStream, fShaderStream;
 
-    vShaderStream << vShaderFile.rdbuf();
-    fShaderStream << fShaderFile.rdbuf();
+        vShaderStream << vShaderFile.rdbuf();
+        fShaderStream << fShaderFile.rdbuf();
 
-    vertexCode = vShaderStream.str();
-    fragmentCode = fShaderStream.str();
+        vShaderFile.close();
+        fShaderFile.close();
+
+        vertexCode = vShaderStream.str();
+        fragmentCode = fShaderStream.str();
+
+    } catch (std::ifstream::failure& e) {
+        std::cerr << "ERROR::SHADER::FILE_NOT_SUCCESSFULLY_READ: " << e.what() << std::endl;
+        std::cerr << "  Vertex Path: " << vertexPath << std::endl;
+        std::cerr << "  Fragment Path: " << fragmentPath << std::endl;
+        return false;
+    }
+
+    // Check if code is empty after reading
+    if (vertexCode.empty()) {
+        std::cerr << "ERROR::SHADER::VERTEX_CODE_EMPTY after reading file: " << vertexPath << std::endl;
+        return false;
+    }
+    if (fragmentCode.empty()) {
+        std::cerr << "ERROR::SHADER::FRAGMENT_CODE_EMPTY after reading file: " << fragmentPath << std::endl;
+        return false;
+    }
 
     const char* vShaderCode = vertexCode.c_str();
     const char* fShaderCode = fragmentCode.c_str();
