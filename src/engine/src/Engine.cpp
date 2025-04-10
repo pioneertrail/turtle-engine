@@ -142,6 +142,24 @@ void Engine::handleInput() {
     if (inputManager->isKeyPressed(GLFW_KEY_TAB)) {
         showMetrics = !showMetrics;
     }
+
+    // Add STASAI gesture trigger
+    if (inputManager->isKeyPressed(GLFW_KEY_G)) {
+        logToFile("G key pressed, triggering Stasai gesture.");
+        m_gestureRecognizer->triggerGesture(CSL::GestureType::STASAI);
+    }
+
+    // Add ANNIHLAT gesture trigger
+    if (inputManager->isKeyPressed(GLFW_KEY_H)) {
+        logToFile("H key pressed, triggering Annihlat gesture.");
+        m_gestureRecognizer->triggerGesture(CSL::GestureType::ANNIHLAT);
+    }
+
+    // Add NONE gesture trigger (for testing or specific scenarios)
+    if (inputManager->isKeyPressed(GLFW_KEY_N)) {
+        logToFile("N key pressed, triggering None gesture.");
+        m_gestureRecognizer->triggerGesture(CSL::GestureType::NONE);
+    }
 }
 
 void Engine::updateTriangle() {
