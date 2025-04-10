@@ -199,10 +199,10 @@
    - **Estimated Time**: 4 days
 
 3. **Visual Feedback**
-   - [ ] Design feedback system
-   - [ ] Implement hit indicators
-   - [ ] Create combo indicators
-   - **Dependencies**: Hitbox Detection, Combo System
+   - [x] Design feedback system (`VisualFeedback.hpp`, `ParticleSystem` structure)
+   - [x] Implement hit indicators (Basic particle system implemented, spawning on gesture)
+   - [ ] Create combo indicators (Blocked by text rendering)
+   - **Dependencies**: Hitbox Detection, Combo System, Rendering System
    - **Estimated Time**: 3 days
 
 ### Task Dependencies Graph

@@ -47,6 +47,7 @@ add_library(TurtleEngineCore
     src/engine/src/csl/CSLSystem.cpp
     src/engine/src/combat/Hitbox.cpp
     src/engine/src/combat/Combo.cpp
+    src/engine/src/ParticleSystem.cpp
 )
 
 # Performance optimization flags for gesture recognition and plasma effects
@@ -74,7 +75,12 @@ target_link_libraries(TurtleEngineCore PUBLIC
 
 # Create main executable
 add_executable(${PROJECT_NAME} src/main.cpp)
-target_link_libraries(${PROJECT_NAME} PRIVATE TurtleEngineCore)
+target_link_libraries(${PROJECT_NAME} PRIVATE 
+    TurtleEngineCore 
+    # GLEW::GLEW # Should be inherited from TurtleEngineCore (PUBLIC)
+    # OpenGL::GL # Should be inherited from TurtleEngineCore (PUBLIC)
+    # glfw      # Should be inherited from TurtleEngineCore (PUBLIC)
+)
 
 # Copy shader files to build directory
 file(COPY ${CMAKE_SOURCE_DIR}/shaders DESTINATION ${CMAKE_BINARY_DIR}/bin) # Copy shaders to bin where executables are

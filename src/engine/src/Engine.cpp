@@ -10,6 +10,7 @@
 #include "csl/CSLSystem.hpp"
 #include "csl/GestureRecognizer.hpp"
 #include "combat/Combo.hpp"
+#include "ParticleSystem.hpp"
 
 namespace TurtleEngine {
 
@@ -26,11 +27,13 @@ Engine::Engine() : m_window(nullptr), m_isRunning(false) {
     m_camera.pitch = -45.0f;
     m_camera.distance = 20.0f;
 
-    m_cslSystem = std::make_unique<CSL::CSLSystem>();
+    // Correct initialization for raw pointer
+    m_cslSystem = std::make_unique<CSL::CSLSystem>(); 
 
     // Define combos (can be loaded from config later)
-    ComboStep punch2 {"Punch2", std::chrono::milliseconds(400)}; // Example: Punch2 needs to follow within 400ms
-    ComboStep punch1 {"Punch1", std::chrono::milliseconds(500), {}, {punch2}};
+    // Corrected ComboStep aggregate initialization
+    ComboStep punch2 {"Punch2", std::chrono::milliseconds(400)}; 
+    ComboStep punch1 {"Punch1", std::chrono::milliseconds(500), {punch2}}; // ID, Time, NextSteps
     m_definedCombos.push_back({"Basic_Punch_Combo", punch1});
 
     ComboStep kick1 {"Kick1", std::chrono::milliseconds(600)};
@@ -41,12 +44,14 @@ Engine::Engine() : m_window(nullptr), m_isRunning(false) {
     ComboStep flammilSwipe {"Flammil", std::chrono::milliseconds(500)};
     m_definedCombos.push_back({"Flammil_Start", flammilSwipe});
     
-    ComboStep khargailCharge_Step2 {"Punch1", std::chrono::milliseconds(300)}; // Khargail -> Punch1 ?
-    ComboStep khargailCharge {"Khargail", std::chrono::milliseconds(600), {}, {khargailCharge_Step2}};
+    // Corrected ComboStep aggregate initialization
+    ComboStep khargailCharge_Step2 {"Punch1", std::chrono::milliseconds(300)}; 
+    ComboStep khargailCharge {"Khargail", std::chrono::milliseconds(600), {khargailCharge_Step2}}; // ID, Time, NextSteps
     m_definedCombos.push_back({"Khargail_Combo", khargailCharge});
 
     // Instantiate ComboManager with the defined combos
     m_comboManager = std::make_unique<ComboManager>(m_definedCombos);
+    m_particleSystem = std::make_unique<ParticleSystem>(5000); // Allow up to 5000 particles
 }
 
 Engine::~Engine() {
@@ -137,6 +142,12 @@ bool Engine::initialize(const std::string& windowTitle, int width, int height) {
         }
     }
 
+    // Initialize Particle System
+    if (!m_particleSystem || !m_particleSystem->initialize()) {
+        std::cerr << "Failed to initialize Particle System" << std::endl;
+        // Optionally return false if particles are critical
+    }
+
     // Set up input callbacks
     glfwSetWindowUserPointer(m_window, this);
     glfwSetKeyCallback(m_window, [](GLFWwindow* w, int key, int scancode, int action, int mods) {
@@ -159,13 +170,15 @@ bool Engine::initialize(const std::string& windowTitle, int width, int height) {
                 case GLFW_KEY_F: // Trigger Flammil
                     if (engine->m_cslSystem) {
                         std::cout << "[Input] F key pressed, triggering Flammil." << std::endl;
-                        engine->m_cslSystem->triggerGesture(CSL::GestureType::FLAMMIL, keyPressTime);
+                        // Corrected: Call with only one argument
+                        engine->m_cslSystem->triggerGesture(CSL::GestureType::FLAMMIL);
                     }
                     break;
                 case GLFW_KEY_C: // Trigger Khargail
                     if (engine->m_cslSystem) {
                         std::cout << "[Input] C key pressed, triggering Khargail." << std::endl;
-                        engine->m_cslSystem->triggerGesture(CSL::GestureType::KHARGAIL, keyPressTime);
+                        // Corrected: Call with only one argument
+                        engine->m_cslSystem->triggerGesture(CSL::GestureType::KHARGAIL);
                     }
                     break;
             }
@@ -260,6 +273,19 @@ void Engine::onGestureRecognized(const CSL::GestureResult& result) {
     }
     // --- End Latency Check ---
 
+    // --- TEMPORARY: Spawn particles on gesture --- 
+    if (m_particleSystem && result.type != CSL::GestureType::NONE) {
+        glm::vec3 spawnPos = glm::vec3(0.0f, 1.0f, 0.0f); // Fixed spawn point for now
+        // Later, this position should come from hitbox collision point
+        glm::vec4 sparkColor = glm::vec4(1.0f, 0.8f, 0.2f, 1.0f); // Yellow/orange spark
+        float initialSpeed = 5.0f;
+        float lifetime = 0.5f;
+        int count = 20; // Number of particles per spark
+        std::cout << "    Spawning particle burst at (" << spawnPos.x << "," << spawnPos.y << "," << spawnPos.z << ")" << std::endl;
+        m_particleSystem->spawnBurst(count, spawnPos, initialSpeed, lifetime, sparkColor);
+    }
+    // --- End Temporary Spawn ---
+
     // Process the move via ComboManager if a valid gesture name was found
     if (m_comboManager && gestureName != "UNKNOWN" && gestureName != "None") {
         // Timing for ComboManager processing itself
@@ -276,7 +302,8 @@ void Engine::onGestureRecognized(const CSL::GestureResult& result) {
 }
 
 void Engine::setCSLSystem(CSL::CSLSystem* sys) {
-    m_cslSystem = sys;
+    // Correctly manage ownership with unique_ptr
+    m_cslSystem.reset(sys); 
     if (m_cslSystem) {
         // Register the callback
         m_cslSystem->addPlasmaCallback([this](const CSL::GestureResult& result) {
@@ -295,9 +322,19 @@ void Engine::handleFlammyxGesture(const CSL::GestureResult& result) {
         std::vector<float> vertexData;
         vertexData.reserve(result.trajectory.size() * 4); // 3 pos + 1 vel
 
+        int windowWidth, windowHeight;
+        glfwGetFramebufferSize(m_window, &windowWidth, &windowHeight);
+
         for (size_t i = 0; i < result.trajectory.size(); ++i) {
-            vertexData.push_back(result.trajectory[i].x); // x
-            vertexData.push_back(result.trajectory[i].y); // y
+            float ndcX = (result.trajectory[i].x / static_cast<float>(windowWidth)) * 2.0f - 1.0f;
+            float ndcY = 1.0f - (result.trajectory[i].y / static_cast<float>(windowHeight)) * 2.0f; // Invert Y for OpenGL coords
+
+            // Clamp coordinates to NDC range [-1, 1]
+            ndcX = glm::clamp(ndcX, -1.0f, 1.0f);
+            ndcY = glm::clamp(ndcY, -1.0f, 1.0f);
+
+            vertexData.push_back(ndcX); // Clamped X
+            vertexData.push_back(ndcY); // Clamped Y
             vertexData.push_back(0.0f);                    // z (assuming 2D for now)
             vertexData.push_back(result.velocities[i]);    // velocity
         }
@@ -338,6 +375,11 @@ void Engine::run() {
             m_cslSystem->update();
         }
 
+        // Update Particle System
+        if (m_particleSystem) {
+            m_particleSystem->update(static_cast<float>(deltaTime));
+        }
+
         // Clear buffers
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f); // Dark grey background
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -349,6 +391,11 @@ void Engine::run() {
 
         // Render grid
         m_grid->render(view, projection);
+
+        // Render particles
+        if (m_particleSystem) {
+            m_particleSystem->render(view, projection);
+        }
 
         // --- Render Flammyx Trail Start ---
         {

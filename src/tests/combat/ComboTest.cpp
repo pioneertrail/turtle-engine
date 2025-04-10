@@ -13,81 +13,8 @@
 #include <thread> // For sleep
 #include <cassert> 
 
-namespace TurtleEngine
-{
-    // --- Replicating ComboManager definition here TEMPORARILY for testing --- 
-    // --- This should ideally be in Combo.hpp --- 
-    class ComboManager
-    {
-    public:
-        ComboManager(const std::vector<ComboSequence>& availableCombos)
-            : availableCombos_(availableCombos), 
-              lastMoveTime_(std::chrono::steady_clock::now()),
-              currentStatePtr_(nullptr)
-        {}
-
-        void ProcessMove(const std::string& moveIdentifier)
-        {
-            auto now = std::chrono::steady_clock::now();
-            std::chrono::milliseconds timeSinceLast = 
-                std::chrono::duration_cast<std::chrono::milliseconds>(now - lastMoveTime_);
-            
-            std::cout << "[Test] Processing move: " << moveIdentifier 
-                      << " (Time since last: " << timeSinceLast.count() << "ms)" << std::endl;
-
-            // Basic Placeholder Logic (Needs proper implementation)
-            bool transitioned = false;
-            if (currentStatePtr_) { // If we are mid-combo
-                 // Check if moveIdentifier matches any next step and is within time window
-                 for (const auto& nextStep : currentStatePtr_->nextSteps) {
-                     if (nextStep.moveIdentifier == moveIdentifier && timeSinceLast <= nextStep.maxTimeSincePrevious) {
-                         // Found a valid transition - Need to find the actual next step in availableCombos_ definition
-                         // This is complex with the current structure - requires searching availableCombos_
-                         std::cout << "  [Test] Transitioned from " << currentStatePtr_->moveIdentifier << " to " << moveIdentifier << std::endl;
-                         // Placeholder: Just update state - FIND THE ACTUAL STEP LATER
-                         // currentStatePtr_ = &nextStep; // Incorrect - nextStep is a copy
-                         currentState_ = moveIdentifier; // Keep simple state for now
-                         transitioned = true;
-                         break; 
-                     }
-                 }
-            } 
-            
-            if (!transitioned) { // Start checking for new combos
-                // Check if moveIdentifier matches any startingStep.moveIdentifier
-                 for (const auto& sequence : availableCombos_) {
-                     if (sequence.startingStep.moveIdentifier == moveIdentifier) {
-                         std::cout << "  [Test] Started new combo: " << sequence.sequenceName << std::endl;
-                         // Placeholder: Just update state - FIND THE ACTUAL STEP LATER
-                         // currentStatePtr_ = &sequence.startingStep; // Incorrect - startingStep is a copy
-                         currentState_ = moveIdentifier;
-                         transitioned = true; 
-                         break;
-                     }
-                 }
-            }
-
-            if (!transitioned) {
-                 std::cout << "  [Test] No combo transition or start." << std::endl;
-                 currentStatePtr_ = nullptr; // Reset combo state
-                 currentState_.clear();
-            }
-            
-            lastMoveTime_ = now;
-        }
-        
-        std::string getCurrentStateDebug() const { return currentState_; }
-        std::chrono::steady_clock::time_point getLastMoveTimeDebug() const { return lastMoveTime_; }
-
-    private:
-        const std::vector<ComboSequence>& availableCombos_; 
-        const ComboStep* currentStatePtr_; // Pointer to the current step within a sequence in availableCombos_
-        std::string currentState_; // TEMPORARY simple state
-        std::chrono::steady_clock::time_point lastMoveTime_;
-    };
-    // --- End of Temporary ComboManager Definition ---
-
-}
+// Removed the entire redundant ComboManager definition that was here.
+// The correct definition will be linked from TurtleEngineCore library.
 
 void RunComboTests()
 {

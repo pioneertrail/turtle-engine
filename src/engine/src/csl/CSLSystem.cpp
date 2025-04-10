@@ -179,41 +179,36 @@ void CSLSystem::processFrame(const cv::Mat& frame) {
     }
 }
 
-// Updated method to trigger gesture from code, accepting trigger time
-void CSLSystem::triggerGesture(GestureType type, std::chrono::high_resolution_clock::time_point triggerTime) {
-    if (type == GestureType::NONE) return;
+// Updated: Removed time_point parameter to match header
+void CSLSystem::triggerGesture(GestureType type) { 
+    m_lastGestureResult.type = type;
+    m_lastGestureResult.confidence = 1.0f; // Assume full confidence for direct trigger
+    m_lastGestureResult.position = cv::Point2f(-1, -1); // Indicate invalid position for triggered gesture
+    m_lastGestureResult.velocities.clear(); // No velocity for triggered gesture
+    m_lastGestureResult.transitionLatency = -1.0f; // Indicate no latency measured
+    
+    // Indicate it was triggered externally (e.g., by keybind)
+    std::cout << "[CSLSystem] Triggered gesture: " << static_cast<int>(type) << std::endl;
 
-    // Construct a simulated high-confidence result
-    GestureResult result;
-    result.type = type;
-    result.confidence = 1.0f; // Simulate high confidence
-    result.position = cv::Point2f(0, 0); // Dummy position
-    result.timestamp = std::chrono::high_resolution_clock::now(); // Time callback is invoked
-    result.endTimestamp = result.timestamp; // Instantaneous
-    result.transitionLatency = 0.0f; 
-    result.triggerTimestamp = triggerTime; // Store the original trigger time
-
-    std::cout << "CSLSystem: Triggering gesture type " << static_cast<int>(type) << std::endl;
-    invokeCallbacks(result);
+    // Invoke callbacks immediately for triggered gestures
+    invokeCallbacks(m_lastGestureResult);
 }
 
-// Helper to invoke callbacks (handles general and specific like plasma)
 void CSLSystem::invokeCallbacks(const GestureResult& result) {
-     // Notify general callbacks
+    std::lock_guard<std::mutex> lock(m_resultMutex);
+    m_lastGestureResult = result; // Update last result
+    
+    // Invoke general callbacks
     for (const auto& callback : m_callbacks) {
         callback(result);
     }
-
-    // Specific callbacks (e.g., Plasma for Flammil)
+    
+    // Invoke plasma callbacks specifically for Flammil
     if (result.type == GestureType::FLAMMIL) {
-        float flammilThreshold = m_gestureRecognizer ? m_gestureRecognizer->getGestureThreshold(GestureType::FLAMMIL) : 0.75f; 
-        if (result.confidence >= flammilThreshold) {
-             for (const auto& plasmaCallback : m_plasmaCallbacks) {
-                 plasmaCallback(result);
-             }
+        for (const auto& callback : m_plasmaCallbacks) {
+            callback(result);
         }
     }
-    // TODO: Add similar specific callback logic for other gestures/effects if needed
 }
 
 } // namespace CSL

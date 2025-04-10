@@ -11,6 +11,7 @@
 #include "csl/CSLSystem.hpp"
 #include "csl/GestureRecognizer.hpp"
 #include "combat/Combo.hpp"
+#include "ParticleSystem.hpp"
 #include <mutex>
 // Forward declare CSLSystem to avoid full include here if possible
 // #include "csl/CSLSystem.hpp" 
@@ -61,9 +62,10 @@ private:
     // Core components
     GLFWwindow* m_window;
     bool m_isRunning;
-    CSL::CSLSystem* m_cslSystem = nullptr; // Pointer to CSL System
+    std::unique_ptr<CSL::CSLSystem> m_cslSystem;
     std::unique_ptr<ComboManager> m_comboManager;
     std::vector<ComboSequence> m_definedCombos;
+    std::unique_ptr<ParticleSystem> m_particleSystem;
     
     // Camera
     struct {
