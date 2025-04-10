@@ -146,6 +146,11 @@ if(BUILD_TESTS)
     #         endif()
     #     endforeach()
     # endif()
+
+    # === NEW: Target for the Engine test executable ===
+    add_executable(TurtleEngine_Tests src/tests/TurtleEngine_Tests.cpp)
+    target_link_libraries(TurtleEngine_Tests PRIVATE TurtleEngineCore)
+    # === END NEW ===
 endif()
 
 # After all targets are defined, add the DLL copy commands
@@ -188,6 +193,12 @@ if(OpenCV_BIN_DIR AND EXISTS "${OpenCV_BIN_DIR}") # Check if vcpkg provided the 
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 ${DLL}
                 $<TARGET_FILE_DIR:ComboTest>)
+        endif()
+        if (TARGET TurtleEngine_Tests)
+            add_custom_command(TARGET TurtleEngine_Tests POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${DLL}
+                $<TARGET_FILE_DIR:TurtleEngine_Tests>)
         endif()
     endforeach()
 endif()

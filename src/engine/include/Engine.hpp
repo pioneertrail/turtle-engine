@@ -47,6 +47,17 @@ public:
     // Set the CSL System instance
     void setCSLSystem(CSL::CSLSystem* sys);
 
+    // Method for test automation
+    void simulateKeyPress(char key);
+    ParticleSystem& getParticleSystem() { 
+        if (!m_particleSystem) { 
+            throw std::runtime_error("ParticleSystem not initialized!"); 
+        }
+        return *m_particleSystem; 
+    }
+    // Add update method for tests
+    void update(float deltaTime);
+
 private:
     // Callback handler for Flammyx gestures
     void handleFlammyxGesture(const CSL::GestureResult& result);

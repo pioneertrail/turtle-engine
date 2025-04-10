@@ -482,4 +482,40 @@ void Engine::shutdown() {
     m_isRunning = false;
 }
 
+void Engine::simulateKeyPress(char key) {
+    m_debugLog << "[Engine Test] Simulating key press: " << key << std::endl;
+    // Expand this later if needed for other keys
+    if (m_cslSystem && key == 'F') {
+        m_debugLog << "[Engine Test] Triggering FLAMMIL gesture via CSLSystem." << std::endl;
+        // Pass current time for potential latency tracking if CSL uses it
+        m_cslSystem->triggerGesture(CSL::GestureType::FLAMMIL, std::chrono::high_resolution_clock::now()); 
+    } else if (!m_cslSystem) {
+         m_debugLog << "[Engine Test] CSLSystem is null, cannot trigger gesture." << std::endl;
+    }
+}
+
+// Update method primarily for testing/non-rendering scenarios
+void Engine::update(float deltaTime) {
+    m_debugLog << "[Engine Update] DeltaTime: " << deltaTime << std::endl;
+    
+    // Update CSL System
+    if (m_cslSystem) {
+        auto cslStart = std::chrono::high_resolution_clock::now();
+        m_cslSystem->update(); // Assuming CSL handles its own timing or frame logic
+        auto cslEnd = std::chrono::high_resolution_clock::now();
+        m_debugLog << "  CSL Update took: " << std::chrono::duration_cast<std::chrono::microseconds>(cslEnd - cslStart).count() << " us" << std::endl;
+    }
+
+    // Update Particle System
+    if (m_particleSystem) {
+         auto particleUpdateStart = std::chrono::high_resolution_clock::now();
+         m_particleSystem->update(deltaTime);
+         auto particleUpdateEnd = std::chrono::high_resolution_clock::now();
+         m_debugLog << "  Particle Update took: " << std::chrono::duration_cast<std::chrono::microseconds>(particleUpdateEnd - particleUpdateStart).count() << " us" << std::endl;
+    }
+    
+    // Note: This test update doesn't process input or update camera from Engine::run
+    // It focuses on updating the core logic systems (CSL, Particles)
+}
+
 } // namespace TurtleEngine 
