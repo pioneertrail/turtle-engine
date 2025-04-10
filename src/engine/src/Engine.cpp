@@ -142,17 +142,15 @@ bool Engine::initialize(const std::string& windowTitle, int width, int height) {
                     break;
                 // Quick Sign Keys
                 case GLFW_KEY_F: // Trigger Flammil
+                    std::cout << "[Input] F key pressed, triggering Flammil.\n";
                     if (engine->m_cslSystem) {
-                        std::cout << "[Input] F key pressed, triggering Flammil." << std::endl;
-                        // Corrected: Call with type and timestamp
-                        engine->m_cslSystem->triggerGesture(CSL::GestureType::FLAMMIL, keyPressTime);
+                        engine->m_cslSystem->triggerGesture(CSL::GestureType::FLAMMIL);
                     }
                     break;
                 case GLFW_KEY_C: // Trigger Khargail
+                    std::cout << "[Input] C key pressed, triggering Khargail.\n";
                     if (engine->m_cslSystem) {
-                        std::cout << "[Input] C key pressed, triggering Khargail." << std::endl;
-                        // Corrected: Call with type and timestamp
-                        engine->m_cslSystem->triggerGesture(CSL::GestureType::KHARGAIL, keyPressTime);
+                        engine->m_cslSystem->triggerGesture(CSL::GestureType::KHARGAIL);
                     }
                     break;
             }
@@ -285,32 +283,35 @@ void Engine::onGestureRecognized(const CSL::GestureResult& result) {
         windowWidth = std::max(1, windowWidth); // Avoid division by zero
         windowHeight = std::max(1, windowHeight);
 
-        const int spawnRate = 3; // Spawn every N points
+        const int spawnRate = 5; // Adjusted from 3 for demo clarity
         const float baseLifetime = 0.4f;
         const float lifetimeVariance = 0.2f;
         const float baseSpeed = 0.1f; // Low speed for embers
-        const int burstCount = 3; // Anya's chaos factor
+        const int burstCount = 10; // Boosted to 10 particles per point
 
         for (size_t i = 0; i < result.trajectory.size(); ++i) {
-            // Ensure we don't access velocities out of bounds if sizes mismatch despite check
             if (i >= result.velocities.size()) break; 
 
-            if (i % spawnRate == 0) {
-                float velocityNormalized = result.velocities[i]; // Use actual velocity data
+            if (i % spawnRate == 0) { // Spawn every 5th point
+                float velocityNormalized = result.velocities[i]; 
                 float intensity = glm::clamp(0.5f + pow(velocityNormalized, 2.0f) * 0.5f, 0.5f, 1.0f); 
                 float hotMix = glm::smoothstep(0.6f, 0.9f, velocityNormalized);
                 glm::vec3 dynamicColorVec3 = glm::mix(glm::vec3(1.0, 0.4, 0.0), glm::vec3(1.0, 0.8, 0.2), hotMix) * intensity;
-                glm::vec4 emberColor = glm::vec4(dynamicColorVec3, 0.8f); // Slightly transparent embers
+                glm::vec4 emberColor = glm::vec4(dynamicColorVec3, 0.8f); 
 
                 float ndcX = (result.trajectory[i].x / static_cast<float>(windowWidth)) * 2.0f - 1.0f;
                 float ndcY = 1.0f - (result.trajectory[i].y / static_cast<float>(windowHeight)) * 2.0f; 
-                glm::vec3 spawnPos = glm::vec3(ndcX * 5.0f, ndcY * 5.0f, -1.0f); // Scale NDC to world units
+                glm::vec3 spawnPos = glm::vec3(ndcX * 5.0f, ndcY * 5.0f, -1.0f); 
                 
                 float lifetime = baseLifetime + (static_cast<float>(rand()) / RAND_MAX - 0.5f) * lifetimeVariance * 2.0f;
                 
                 m_particleSystem->spawnBurst(burstCount, spawnPos, baseSpeed, lifetime, emberColor);
             }
         }
+        // Dummy hit feedback
+        glm::vec3 hitPos = glm::vec3(0.0f, 0.0f, -1.0f);  // Center screen
+        glm::vec4 hitColor = glm::vec4(1.0f, 0.0f, 0.0f, 0.8f);  // Red sparks
+        m_particleSystem->spawnBurst(15, hitPos, 0.3f, 0.5f, hitColor);  // Hit burst
     }
     // --- End FLAMMIL Ember Particles --- 
 
@@ -340,9 +341,9 @@ void Engine::run() {
 
         // Frame time calculation
         double currentTime = glfwGetTime();
-        m_deltaTime = currentTime - m_lastFrameTime;
-        m_lastFrameTime = currentTime;
-        double currentFrameTime = m_deltaTime; // Use calculated delta time for updates
+        m_performance.deltaTime = currentTime - m_performance.lastFrameTime;
+        m_performance.lastFrameTime = currentTime;
+        double currentFrameTime = m_performance.deltaTime; // Use calculated delta time for updates
 
         processInput();
 
