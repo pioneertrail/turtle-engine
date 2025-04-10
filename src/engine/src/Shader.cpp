@@ -33,6 +33,9 @@ bool Shader::loadFromFiles(const std::string& vertexPath, const std::string& fra
     const char* vShaderCode = vertexCode.c_str();
     const char* fShaderCode = fragmentCode.c_str();
 
+    // Log shader source before compiling
+    std::cout << "\n--- VERTEX SHADER SOURCE ---\n" << vShaderCode << "\n----------------------------\n" << std::endl;
+
     unsigned int vertex, fragment;
     vertex = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertex, 1, &vShaderCode, NULL);
@@ -40,6 +43,9 @@ bool Shader::loadFromFiles(const std::string& vertexPath, const std::string& fra
     if (!checkCompileErrors(vertex, "VERTEX")) {
         return false;
     }
+
+    // Log shader source before compiling
+    std::cout << "\n--- FRAGMENT SHADER SOURCE ---\n" << fShaderCode << "\n------------------------------\n" << std::endl;
 
     fragment = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragment, 1, &fShaderCode, NULL);
