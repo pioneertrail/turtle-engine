@@ -43,6 +43,9 @@ namespace TurtleEngine {
         // Render active particles
         bool render(const glm::mat4& view, const glm::mat4& projection);
 
+        // Getter for active particle count
+        size_t getActiveParticleCount() const;
+
     private:
         void createBuffers();
         void updateBuffers(); // Update VBO with active particle data

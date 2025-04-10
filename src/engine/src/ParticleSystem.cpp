@@ -173,4 +173,9 @@ bool ParticleSystem::render(const glm::mat4& view, const glm::mat4& projection) 
     return true;
 }
 
+// Getter implementation
+size_t ParticleSystem::getActiveParticleCount() const {
+    return m_activeParticleCount;
+}
+
 } // namespace TurtleEngine 
