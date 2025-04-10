@@ -51,8 +51,15 @@ bool Shader::loadFromFiles(const std::string& vertexPath, const std::string& fra
     m_program = glCreateProgram();
     glAttachShader(m_program, vertex);
     glAttachShader(m_program, fragment);
+
+    // Add debug log before linking
+    std::cout << "DEBUG::SHADER: Attaching shaders [V:" << vertex << ", F:" << fragment << "] to Program [P:" << m_program << "] before linking." << std::endl;
+
     glLinkProgram(m_program);
     if (!checkCompileErrors(m_program, "PROGRAM")) {
+        // Clean up shaders even on link failure before returning
+        glDeleteShader(vertex);
+        glDeleteShader(fragment);
         return false;
     }
 
