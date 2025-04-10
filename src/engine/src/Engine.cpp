@@ -452,15 +452,14 @@ void Engine::run() {
                 std::cout << "RENDER_CHECK_SUCCESS" << std::endl; // Log success marker to console
                 m_debugLog << "RENDER_CHECK_SUCCESS" << std::endl; // Also log to file
                 successLogged = true; // Set flag to exit loop
-                // Optionally force exit: glfwSetWindowShouldClose(m_window, GLFW_TRUE);
+                glfwSetWindowShouldClose(m_window, GLFW_TRUE); // Force exit
             } else {
                 std::cerr << "RENDER_CHECK_FAILURE: Grid Success=" << gridRenderSuccess 
                           << ", Particle Success After Sim=" << particleRenderSuccessAfterSim << std::endl;
                 m_debugLog << "RENDER_CHECK_FAILURE: Grid Success=" << gridRenderSuccess 
                            << ", Particle Success After Sim=" << particleRenderSuccessAfterSim << std::endl;
-                // Let it run a bit longer or exit here? For automation, maybe exit.
                  successLogged = true; // Exit even on failure for automation
-                 // glfwSetWindowShouldClose(m_window, GLFW_TRUE);
+                 glfwSetWindowShouldClose(m_window, GLFW_TRUE); // Force exit
             }
         }
 
