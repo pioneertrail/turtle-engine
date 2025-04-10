@@ -7,6 +7,7 @@
 #include <chrono>
 #include <map>
 #include <fstream>
+#include <optional>
 
 namespace TurtleEngine {
 namespace CSL {
@@ -26,9 +27,12 @@ struct GestureResult {
     cv::Point2f position;
     std::vector<cv::Point2f> trajectory;
     std::vector<float> velocities; // Normalized velocities (0.0 to 1.0)
-    std::chrono::high_resolution_clock::time_point timestamp;  // Start time
-    std::chrono::high_resolution_clock::time_point endTimestamp;
-    float transitionLatency;  // Time since last gesture
+    std::chrono::high_resolution_clock::time_point timestamp;  // Recognition start time
+    std::chrono::high_resolution_clock::time_point endTimestamp; // Recognition end time
+    float transitionLatency;  // Time since last *recognized* gesture
+    
+    // Optional field for latency measurement of triggered gestures
+    std::optional<std::chrono::high_resolution_clock::time_point> triggerTimestamp;
 };
 
 struct ComboTransition {
