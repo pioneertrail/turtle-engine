@@ -15,10 +15,11 @@ namespace TurtleEngine {
         glm::vec3 velocity{0.0f};
         glm::vec4 color{1.0f, 1.0f, 0.0f, 1.0f}; // Default yellow spark color
         float life = 0.0f; // Remaining life time in seconds
+        float initialLife = 0.0f; // Store initial lifetime for normalization
 
         Particle() = default; // Needed for vector resizing
-        Particle(glm::vec3 pos, glm::vec3 vel, glm::vec4 col, float l) 
-            : position(pos), velocity(vel), color(col), life(l) {}
+        Particle(glm::vec3 pos, glm::vec3 vel, glm::vec4 col, float currentLife, float initLife) 
+            : position(pos), velocity(vel), color(col), life(currentLife), initialLife(initLife) {}
     };
 
     // Manages simulation, buffering, and rendering of particles

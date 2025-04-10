@@ -41,21 +41,26 @@ void ParticleSystem::createBuffers() {
 
     glBindVertexArray(m_VAO);
     glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
+    // Allocate buffer memory (dynamic draw because updated frequently)
+    glBufferData(GL_ARRAY_BUFFER, m_maxParticles * 8 * sizeof(float), nullptr, GL_DYNAMIC_DRAW);
 
-    // Allocate buffer space for maximum particles
-    // Data will be uploaded dynamically via glBufferSubData
-    glBufferData(GL_ARRAY_BUFFER, m_maxParticles * 7 * sizeof(float), NULL, GL_DYNAMIC_DRAW);
-
-    // Vertex Attributes
-    // Position (vec3)
+    // Define vertex attributes
+    size_t stride = 8 * sizeof(float); // 3 pos + 4 color + 1 life
+    
+    // Position attribute (location = 0)
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
 
-    // Color (vec4)
+    // Color attribute (location = 1)
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 7 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+    
+    // Life Ratio attribute (location = 2) - Assuming we use location 2
+    glEnableVertexAttribArray(2); 
+    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, stride, (void*)(7 * sizeof(float))); // Offset = 3 pos + 4 color
 
-    glBindVertexArray(0); // Unbind VAO
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }
 
 int ParticleSystem::findUnusedParticle() {
@@ -79,44 +84,52 @@ int ParticleSystem::findUnusedParticle() {
 void ParticleSystem::spawnParticle(const Particle& particleProperties) {
     int particleIndex = findUnusedParticle();
     if (particleIndex != -1) {
+        // Use the provided properties, ensuring initialLife is set
         m_particles[particleIndex] = particleProperties; 
+        // Ensure life is also set if not already in properties
+        m_particles[particleIndex].life = particleProperties.initialLife; 
     }
 }
 
 void ParticleSystem::spawnBurst(int count, glm::vec3 origin, float initialSpeed, float lifetime, glm::vec4 color) {
-     for(int i = 0; i < count; ++i) {
-        int particleIndex = findUnusedParticle();
-        if (particleIndex == -1) return; // No more free particles
+    std::cout << "  [ParticleSystem SpawnBurst] Count: " << count << ", Origin: (" 
+              << origin.x << "," << origin.y << "," << origin.z << "), Speed: " 
+              << initialSpeed << ", Lifetime: " << lifetime << std::endl;
 
-        m_particles[particleIndex].position = origin;
-        // Simple random direction (sphere)
-        m_particles[particleIndex].velocity = glm::sphericalRand(initialSpeed); 
-        m_particles[particleIndex].color = color;
-        m_particles[particleIndex].life = lifetime; 
-     }
+    for (int i = 0; i < count; ++i) {
+        int particleIndex = findUnusedParticle();
+        if (particleIndex != -1) {
+            m_particles[particleIndex].position = origin;
+            // Add random velocity variation
+            glm::vec3 randomDir = glm::sphericalRand(1.0f);
+            m_particles[particleIndex].velocity = randomDir * initialSpeed * (0.5f + (static_cast<float>(rand()) / RAND_MAX) * 0.5f); // Random speed variation
+            m_particles[particleIndex].color = color;
+            // Add random lifetime variation
+            m_particles[particleIndex].life = lifetime * (0.8f + (static_cast<float>(rand()) / RAND_MAX) * 0.4f); 
+            m_particles[particleIndex].initialLife = m_particles[particleIndex].life; // Store the randomized life as initial
+        }
+    }
 }
 
 void ParticleSystem::update(float deltaTime) {
-    if (!m_initialized) return;
+    // Log entry with delta time
+    std::cout << "  [ParticleSystem Update] Received deltaTime: " << deltaTime << std::endl;
 
-    m_particleBufferData.clear(); // Clear buffer for refill
-    size_t activeParticleCount = 0;
+    // Reset buffer and active count for this frame
+    m_particleBufferData.clear();
+    m_activeParticleCount = 0; 
 
     for (size_t i = 0; i < m_maxParticles; ++i) {
         Particle& p = m_particles[i];
 
         if (p.life > 0.0f) {
-            // Decrease life
             p.life -= deltaTime;
 
             if (p.life > 0.0f) {
-                // Simulate physics (simple Euler integration)
-                p.velocity += glm::vec3(0.0f, -9.81f, 0.0f) * deltaTime * 0.5f; // Simple gravity
+                // Update position (simple Euler integration)
                 p.position += p.velocity * deltaTime;
-
-                // Update color alpha based on life (simple fade)
-                float lifeRatio = std::max(0.0f, p.life / 1.0f); // Assuming max life of 1 for fade base
-                p.color.a = lifeRatio;
+                // Optional: Add gravity or other forces
+                // p.velocity.y -= 9.81f * deltaTime;
 
                 // Add particle data to buffer
                 m_particleBufferData.push_back(p.position.x);
@@ -126,12 +139,27 @@ void ParticleSystem::update(float deltaTime) {
                 m_particleBufferData.push_back(p.color.g);
                 m_particleBufferData.push_back(p.color.b);
                 m_particleBufferData.push_back(p.color.a);
-                activeParticleCount++;
+
+                // Calculate and add normalized life ratio
+                float lifeRatio = 0.0f;
+                if (p.initialLife > 0.0f) { // Avoid division by zero
+                    lifeRatio = glm::clamp(p.life / p.initialLife, 0.0f, 1.0f);
+                }
+                m_particleBufferData.push_back(lifeRatio);
+
+                m_activeParticleCount++; // Increment count for active/rendered particles
+            } else {
+                // Particle just died
+                // Optionally trigger something here
             }
         }
     }
-    // Update the VBO if there are active particles
-    if (activeParticleCount > 0) {
+
+    std::cout << "  [ParticleSystem Update] Active particles found: " << m_activeParticleCount 
+              << ". Buffer size (floats): " << m_particleBufferData.size() << std::endl;
+
+    // Update VBO if there are active particles
+    if (m_activeParticleCount > 0) {
         updateBuffers();
     }
 }
