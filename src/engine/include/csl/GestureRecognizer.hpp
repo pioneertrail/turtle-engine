@@ -27,6 +27,8 @@ struct GestureResult {
     cv::Point2f position;
     std::vector<cv::Point2f> trajectory;
     std::vector<float> velocities; // Normalized velocities (0.0 to 1.0)
+    std::string gestureName = "UNKNOWN";
+    float debug_velocity = 0.0f;
     std::chrono::high_resolution_clock::time_point timestamp;  // Recognition start time
     std::chrono::high_resolution_clock::time_point endTimestamp; // Recognition end time
     float transitionLatency;  // Time since last *recognized* gesture

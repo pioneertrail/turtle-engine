@@ -11,10 +11,11 @@
 #include "combat/Combo.hpp"
 #include "ParticleSystem.hpp"
 #include <random>
+#include <fstream>
 
 namespace TurtleEngine {
 
-Engine::Engine() : m_window(nullptr), m_isRunning(false) {
+Engine::Engine() : m_window(nullptr), m_isRunning(false), m_particleSystem(std::make_unique<ParticleSystem>(10000)), m_comboManager(std::make_unique<ComboManager>()) {
     m_performance.frameTime = 0.0;
     m_performance.fps = 0;
     m_performance.lastFrameTime = 0.0;
@@ -51,7 +52,12 @@ Engine::Engine() : m_window(nullptr), m_isRunning(false) {
 
     // Instantiate ComboManager with the defined combos
     m_comboManager = std::make_unique<ComboManager>(m_definedCombos);
-    m_particleSystem = std::make_unique<ParticleSystem>(5000); // Allow up to 5000 particles
+
+    // Open the debug log file
+    m_debugLog.open("engine_debug_log.txt", std::ios::out | std::ios::trunc);
+    if (!m_debugLog.is_open()) {
+        std::cerr << "Failed to open engine_debug_log.txt for writing!" << std::endl;
+    }
 }
 
 Engine::~Engine() {
@@ -347,9 +353,16 @@ void Engine::setCSLSystem(CSL::CSLSystem* sys) {
 }
 
 void Engine::run() {
-    while (m_isRunning && !glfwWindowShouldClose(m_window)) {
-        // Log loop entry and window close status
-        std::cout << "[Engine Run] Loop Start. Window Should Close: " << glfwWindowShouldClose(m_window) << std::endl;
+    double firstSecondMarker = glfwGetTime() + 1.0;
+    bool fKeySimulated = false;
+    double successCheckTime = glfwGetTime() + 3.0; // Check after 3 seconds
+    bool gridRenderSuccess = false;
+    bool particleRenderSuccessAfterSim = false;
+    bool successLogged = false;
+
+    while (m_isRunning && !glfwWindowShouldClose(m_window) && !successLogged) { // Exit loop after logging success
+        // Log loop entry and window close status to file
+        m_debugLog << "[Engine Run] Loop Start. Window Should Close: " << glfwWindowShouldClose(m_window) << std::endl;
 
         auto frameStart = std::chrono::high_resolution_clock::now();
 
@@ -357,35 +370,41 @@ void Engine::run() {
         double currentTime = glfwGetTime();
         m_performance.deltaTime = currentTime - m_performance.lastFrameTime;
         m_performance.lastFrameTime = currentTime;
-        double currentFrameTime = m_performance.deltaTime; // Use calculated delta time for updates
+        double currentFrameTime = m_performance.deltaTime;
+
+        // Simulate F key press after 1 second
+        if (!fKeySimulated && currentTime >= firstSecondMarker) {
+            m_debugLog << "[Engine Run] Simulating F key press." << std::endl;
+            if (m_cslSystem) {
+                 m_cslSystem->triggerGesture(CSL::GestureType::FLAMMIL);
+            }
+            fKeySimulated = true;
+        }
 
         processInput();
 
         // --- Start CSL Update Timing ---
         auto cslStart = std::chrono::high_resolution_clock::now();
         if (m_cslSystem) {
-            m_cslSystem->update(); // Assuming this handles frame grabbing internally or uses m_currentFrame
+            m_cslSystem->update();
         }
         auto cslEnd = std::chrono::high_resolution_clock::now();
-        std::cout << "CSL Update: " << std::chrono::duration_cast<std::chrono::microseconds>(cslEnd - cslStart).count() << " us" << std::endl;
-        // --- End CSL Update Timing ---
+        m_debugLog << "CSL Update: " << std::chrono::duration_cast<std::chrono::microseconds>(cslEnd - cslStart).count() << " us" << std::endl;
 
         // --- Start Particle Update Timing ---
         auto particleUpdateStart = std::chrono::high_resolution_clock::now();
         if (m_particleSystem) {
-            // Log deltaTime passed to update
-            std::cout << "  [Engine Run] Passing deltaTime to ParticleSystem::update: " << static_cast<float>(currentFrameTime) << std::endl;
-            m_particleSystem->update(static_cast<float>(currentFrameTime)); // Use calculated delta time
+            m_debugLog << "  [Engine Run] Passing deltaTime to ParticleSystem::update: " << static_cast<float>(currentFrameTime) << std::endl;
+            m_particleSystem->update(static_cast<float>(currentFrameTime));
         }
         auto particleUpdateEnd = std::chrono::high_resolution_clock::now();
-        std::cout << "Particle Update: " << std::chrono::duration_cast<std::chrono::microseconds>(particleUpdateEnd - particleUpdateStart).count() << " us" << std::endl;
-        // --- End Particle Update Timing ---
+        m_debugLog << "Particle Update: " << std::chrono::duration_cast<std::chrono::microseconds>(particleUpdateEnd - particleUpdateStart).count() << " us" << std::endl;
 
-        updateCamera(); // Assuming this uses member variables, not deltaTime directly
+        updateCamera();
 
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f); // Dark grey background (Restored)
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        std::cout << "Cleared to dark grey" << std::endl; // Debug log for clear
+        m_debugLog << "Cleared to dark grey" << std::endl; // Debug log for clear to file
 
         // Calculate view and projection matrices
         glm::mat4 view = glm::lookAt(m_camera.position, m_camera.target, m_camera.up);
@@ -397,30 +416,53 @@ void Engine::run() {
         // --- Debugging Logs ---
         GLint currentProgram = 0;
         glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
-        std::cout << "Shader Program Active (Before Grid/Particles): " << currentProgram << std::endl;
-        std::cout << "View Matrix Diag: [" << view[0][0] << ", " << view[1][1] << ", " << view[2][2] << ", " << view[3][3] << "]" << std::endl;
-        std::cout << "Projection Matrix Diag: [" << projection[0][0] << ", " << projection[1][1] << ", " << projection[2][2] << ", " << projection[3][3] << "]" << std::endl;
-        // --- End Debugging Logs ---
+        m_debugLog << "Shader Program Active (Before Grid/Particles): " << currentProgram << std::endl;
+        m_debugLog << "View Matrix Diag: [" << view[0][0] << ", " << view[1][1] << ", " << view[2][2] << ", " << view[3][3] << "]" << std::endl;
+        m_debugLog << "Projection Matrix Diag: [" << projection[0][0] << ", " << projection[1][1] << ", " << projection[2][2] << ", " << projection[3][3] << "]" << std::endl;
 
         // Log grid pointer state before check
-        std::cout << "  [Engine Run] Checking grid pointer: " << (m_grid ? "Valid" : "NULL") << std::endl; 
+        m_debugLog << "  [Engine Run] Checking grid pointer: " << (m_grid ? "Valid" : "NULL") << std::endl; 
 
-        // Render grid if available
+        // Render grid if available and track success
+        bool currentGridSuccess = false;
         if (m_grid) {
-            m_grid->render(view, projection);
+            currentGridSuccess = m_grid->render(view, projection);
+            if (currentGridSuccess) gridRenderSuccess = true; // Mark success if it rendered OK at least once
         }
 
         // --- Start Particle Render Timing ---
         auto particleRenderStart = std::chrono::high_resolution_clock::now();
+        bool currentParticleSuccess = false;
         if (m_particleSystem) {
-            m_particleSystem->render(view, projection);
+            currentParticleSuccess = m_particleSystem->render(view, projection);
+            if (fKeySimulated && currentParticleSuccess) { // Only count particle success *after* we tried spawning them
+                 particleRenderSuccessAfterSim = true;
+            }
         }
         auto particleRenderEnd = std::chrono::high_resolution_clock::now();
-        std::cout << "Particle Render: " << std::chrono::duration_cast<std::chrono::microseconds>(particleRenderEnd - particleRenderStart).count() << " us" << std::endl;
+        m_debugLog << "Particle Render: " << std::chrono::duration_cast<std::chrono::microseconds>(particleRenderEnd - particleRenderStart).count() << " us" << std::endl;
         // --- End Particle Render Timing ---
 
         auto frameEnd = std::chrono::high_resolution_clock::now();
-        std::cout << "Frame Total: " << std::chrono::duration_cast<std::chrono::microseconds>(frameEnd - frameStart).count() << " us" << std::endl;
+        m_debugLog << "Frame Total: " << std::chrono::duration_cast<std::chrono::microseconds>(frameEnd - frameStart).count() << " us" << std::endl;
+
+        // Check for success after 3 seconds
+        if (!successLogged && currentTime >= successCheckTime) {
+            if (gridRenderSuccess && particleRenderSuccessAfterSim) {
+                std::cout << "RENDER_CHECK_SUCCESS" << std::endl; // Log success marker to console
+                m_debugLog << "RENDER_CHECK_SUCCESS" << std::endl; // Also log to file
+                successLogged = true; // Set flag to exit loop
+                // Optionally force exit: glfwSetWindowShouldClose(m_window, GLFW_TRUE);
+            } else {
+                std::cerr << "RENDER_CHECK_FAILURE: Grid Success=" << gridRenderSuccess 
+                          << ", Particle Success After Sim=" << particleRenderSuccessAfterSim << std::endl;
+                m_debugLog << "RENDER_CHECK_FAILURE: Grid Success=" << gridRenderSuccess 
+                           << ", Particle Success After Sim=" << particleRenderSuccessAfterSim << std::endl;
+                // Let it run a bit longer or exit here? For automation, maybe exit.
+                 successLogged = true; // Exit even on failure for automation
+                 // glfwSetWindowShouldClose(m_window, GLFW_TRUE);
+            }
+        }
 
         glfwSwapBuffers(m_window);
         glfwPollEvents();

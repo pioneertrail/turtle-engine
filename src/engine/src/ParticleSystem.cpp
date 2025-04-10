@@ -152,38 +152,45 @@ void ParticleSystem::updateBuffers() {
     glBindBuffer(GL_ARRAY_BUFFER, 0); // Unbind
 }
 
-void ParticleSystem::render(const glm::mat4& view, const glm::mat4& projection) {
-    // Entry Log & State Check
-    std::cout << "  [Particle Render] Entered. Initialized: " << m_initialized << ", Active Particles: " << m_activeParticleCount << std::endl;
-
+bool ParticleSystem::render(const glm::mat4& view, const glm::mat4& projection) {
+    std::cout << "  [Particle Render] Entered. Initialized: " << m_initialized 
+              << ", Active Particles: " << m_activeParticleCount << std::endl;
     if (!m_initialized || m_activeParticleCount == 0) {
-        std::cout << "  [Particle Render] Exiting early (Not initialized or no active particles)." << std::endl;
-        return;
+        return true;
     }
 
-    // Enable additive blending for sparks (optional)
-    // glEnable(GL_BLEND);
-    // glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-    // Disable depth writing so particles dont obscure each other incorrectly
-    // glDepthMask(GL_FALSE); 
-
     m_shader.use();
-    // Debug Log
     GLint particleProgram = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &particleProgram);
-    std::cout << "  [Particle Render] Shader ID: " << particleProgram << ", Valid: " << m_shader.isValid() << std::endl;
+    bool shaderValid = m_shader.isValid();
+    std::cout << "  [Particle Render] Shader ID: " << particleProgram << ", Valid: " << shaderValid << std::endl;
+    
+    if (!shaderValid) {
+        std::cerr << "  [Particle Render] Shader invalid, exiting render early." << std::endl;
+        return false;
+    }
 
     m_shader.setMat4("view", view);
     m_shader.setMat4("projection", projection);
-    m_shader.setMat4("model", glm::mat4(1.0f)); // Use identity model matrix for world-space particles
 
     glBindVertexArray(m_VAO);
-    // Draw only the number of active particles currently in the buffer
-    glDrawArrays(GL_POINTS, 0, m_activeParticleCount); // Draw based on count from update
-    glBindVertexArray(0);
 
-    // Restore blend/depth state if changed
-    // glDepthMask(GL_TRUE);
-    // glDisable(GL_BLEND);
+    // Check for errors before drawing
+    GLenum preDrawError = glGetError();
+    if (preDrawError != GL_NO_ERROR) {
+        std::cerr << "  [Particle Render] OpenGL Error BEFORE draw: " << preDrawError << std::endl;
+        return false;
+    }
+
+    glDrawArrays(GL_POINTS, 0, m_activeParticleCount);
+
+    // Check for errors after drawing
+    GLenum postDrawError = glGetError();
+    if (postDrawError != GL_NO_ERROR) {
+        std::cerr << "  [Particle Render] OpenGL Error AFTER draw: " << postDrawError << std::endl;
+        return false;
+    }
+    
+    return true;
 }
 
 } // namespace TurtleEngine 

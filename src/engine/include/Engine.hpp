@@ -13,6 +13,7 @@
 #include "combat/Combo.hpp"
 #include "ParticleSystem.hpp"
 #include <mutex>
+#include <fstream> // For file logging
 // Forward declare CSLSystem to avoid full include here if possible
 // #include "csl/CSLSystem.hpp" 
 
@@ -103,6 +104,9 @@ private:
         double frameTime;
         int fps;
         double lastFrameTime;
+        double deltaTime;
     } m_performance;
+
+    std::ofstream m_debugLog; // Debug log file stream
 };
 } 

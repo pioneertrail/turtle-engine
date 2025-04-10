@@ -95,14 +95,19 @@ void Grid::createBuffers() {
     glEnableVertexAttribArray(1);
 }
 
-void Grid::render(const glm::mat4& view, const glm::mat4& projection) {
+bool Grid::render(const glm::mat4& view, const glm::mat4& projection) {
     // Entry Log
     std::cout << "  [Grid Render] Entered." << std::endl;
 
     m_shader.use();
-    // Debug Log
     GLint gridProgram = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &gridProgram);
-    std::cout << "  [Grid Render] Shader ID: " << gridProgram << ", Valid: " << m_shader.isValid() << std::endl;
+    bool shaderValid = m_shader.isValid();
+    std::cout << "  [Grid Render] Shader ID: " << gridProgram << ", Valid: " << shaderValid << std::endl;
+    
+    if (!shaderValid) {
+        std::cerr << "  [Grid Render] Shader invalid, exiting render early." << std::endl;
+        return false;
+    }
 
     m_shader.setMat4("view", view);
     m_shader.setMat4("projection", projection);
@@ -110,10 +115,10 @@ void Grid::render(const glm::mat4& view, const glm::mat4& projection) {
 
     glBindVertexArray(m_VAO);
 
-    // Log draw parameters and check for errors before drawing
     GLenum preDrawError = glGetError();
     if (preDrawError != GL_NO_ERROR) {
         std::cerr << "  [Grid Render] OpenGL Error BEFORE draw: " << preDrawError << std::endl;
+        return false; // Error before draw
     }
     GLsizei indexCount = m_width * m_height * 6;
     std::cout << "  [Grid Render] Drawing Elements: mode=GL_TRIANGLES, count=" << indexCount 
@@ -121,11 +126,14 @@ void Grid::render(const glm::mat4& view, const glm::mat4& projection) {
 
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
 
-    // Check for errors after drawing
     GLenum postDrawError = glGetError();
     if (postDrawError != GL_NO_ERROR) {
         std::cerr << "  [Grid Render] OpenGL Error AFTER draw: " << postDrawError << std::endl;
+        return false; // Error after draw
     }
+    
+    // If we reached here without errors
+    return true;
 }
 
 void Grid::setCellColor(int x, int y, const glm::vec3& color) {

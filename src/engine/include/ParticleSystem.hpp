@@ -41,7 +41,7 @@ namespace TurtleEngine {
         void update(float deltaTime);
 
         // Render active particles
-        void render(const glm::mat4& view, const glm::mat4& projection);
+        bool render(const glm::mat4& view, const glm::mat4& projection);
 
     private:
         void createBuffers();

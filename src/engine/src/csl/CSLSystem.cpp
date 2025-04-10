@@ -179,32 +179,20 @@ void CSLSystem::processFrame(const cv::Mat& frame) {
     }
 }
 
-void CSLSystem::triggerGesture(GestureType type, std::chrono::high_resolution_clock::time_point triggerTime) {
-    if (type == GestureType::NONE) return;
+void CSLSystem::triggerGesture(GestureType type) {
+    std::cout << "CSLSystem: Triggering gesture type " << static_cast<int>(type) << std::endl;
 
-    // Note: This function creates a minimal GestureResult for directly triggered events
-    // (e.g., keybinds). It intentionally does *not* populate trajectory or velocity data,
-    // as there is no simulated movement path. Callbacks receiving this result must
-    // handle the absence of this data.
+    // Create a minimal GestureResult for the triggered event
+    // We don't have trajectory data, so use placeholders
     GestureResult result;
     result.type = type;
-    // Explicitly set gesture name based on type for triggered gestures
-    switch (type) {
-        case GestureType::KHARGAIL: result.gestureName = "Khargail"; break;
-        case GestureType::FLAMMIL: result.gestureName = "Flammil"; break;
-        case GestureType::STASAI: result.gestureName = "Stasai"; break;
-        case GestureType::ANNIHLAT: result.gestureName = "Annihlat"; break;
-        default: result.gestureName = "UNKNOWN_TRIGGERED"; break;
-    }
-    result.confidence = 1.0f; // Assume full confidence for direct triggers
-    result.position = cv::Point2f(0, 0); 
-    result.timestamp = std::chrono::high_resolution_clock::now(); 
-    result.endTimestamp = result.timestamp; 
-    result.transitionLatency = 0.0f; 
-    result.triggerTimestamp = triggerTime; // Store the passed timestamp
-    result.debug_velocity = -1.0f; // Placeholder for triggered gestures
+    result.confidence = 1.0f; // Assume 100% confidence for direct trigger
+    result.position = cv::Point2f(0, 0); // Placeholder position
+    result.timestamp = std::chrono::high_resolution_clock::now(); // Set timestamp
+    result.endTimestamp = result.timestamp; // Set endTimestamp to match
+    // result.triggerTimestamp = triggerTime; // Keep trigger time if needed elsewhere
 
-    // Add minimal trajectory & velocity data for testing particle spawning
+    // Specific handling for Flammil trajectory/velocity placeholders
     if (type == GestureType::FLAMMIL) {
         // Refined 5-point diagonal sweep from (100,100) to (200,200)
         float startX = 100.0f, startY = 100.0f;
@@ -218,10 +206,14 @@ void CSLSystem::triggerGesture(GestureType type, std::chrono::high_resolution_cl
         };
         // Velocities scaling from 0.2f to 1.0f
         result.velocities = {0.2f, 0.4f, 0.6f, 0.8f, 1.0f};
+    } else {
+        // Placeholder trajectory/velocity for other gestures if needed
+        result.trajectory = {{0,0}, {1,1}}; // Minimal trajectory
+        result.velocities = {0.5f, 0.5f}; // Minimal velocity
     }
 
-    std::cout << "CSLSystem: Triggering gesture type " << static_cast<int>(type) << std::endl;
-    this->invokeCallbacks(result);
+    // Update last result and invoke callbacks
+    invokeCallbacks(result);
 }
 
 void CSLSystem::invokeCallbacks(const GestureResult& result) {
