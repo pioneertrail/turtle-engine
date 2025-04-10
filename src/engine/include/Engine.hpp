@@ -88,6 +88,11 @@ public:
     // --- End Test Methods --- 
 
 private:
+    // Automated Test State
+    bool m_automatedTestMode = false;
+    int m_automatedTestPhase = 0;
+    int m_testFrameCounter = 0;
+
     void onGestureRecognized(const CSL::GestureResult& result);
     bool initGL(); 
     void detectHardwareCapabilities();
@@ -131,6 +136,10 @@ private:
     } m_performance;
 
     std::ofstream m_debugLog; // Debug log file stream
+
+    // Method declarations that were modified or added
+    void processInput(); // Renamed from handleInput
+
 };
 
 } // namespace TurtleEngine 
