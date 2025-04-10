@@ -1,5 +1,8 @@
 #include "Grid.hpp"
 #include <glm/gtc/matrix_transform.hpp>
+#include <glad/glad.h> // Include for glGetError
+#include <vector>
+#include <iostream>
 
 namespace TurtleEngine {
 
@@ -106,7 +109,23 @@ void Grid::render(const glm::mat4& view, const glm::mat4& projection) {
     m_shader.setMat4("model", glm::mat4(1.0f));
 
     glBindVertexArray(m_VAO);
-    glDrawElements(GL_TRIANGLES, m_width * m_height * 6, GL_UNSIGNED_INT, 0);
+
+    // Log draw parameters and check for errors before drawing
+    GLenum preDrawError = glGetError();
+    if (preDrawError != GL_NO_ERROR) {
+        std::cerr << "  [Grid Render] OpenGL Error BEFORE draw: " << preDrawError << std::endl;
+    }
+    GLsizei indexCount = m_width * m_height * 6;
+    std::cout << "  [Grid Render] Drawing Elements: mode=GL_TRIANGLES, count=" << indexCount 
+              << ", type=GL_UNSIGNED_INT, indices=0" << std::endl;
+
+    glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
+
+    // Check for errors after drawing
+    GLenum postDrawError = glGetError();
+    if (postDrawError != GL_NO_ERROR) {
+        std::cerr << "  [Grid Render] OpenGL Error AFTER draw: " << postDrawError << std::endl;
+    }
 }
 
 void Grid::setCellColor(int x, int y, const glm::vec3& color) {
