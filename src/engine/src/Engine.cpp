@@ -7,20 +7,29 @@
 
 namespace TurtleEngine {
 
-// Helper function for robust logging
+// Helper for robust file logging
 void Engine::logToFile(const std::string& message) {
+    // Check if the stream is valid before writing
     if (!m_debugLog.is_open() || !m_debugLog.good()) {
-        std::cerr << "Log stream bad, attempting reopen... Message: " << message << std::endl;
-        m_debugLog.close();
-        m_debugLog.open("mengin_debug.log", std::ios::app);
+        std::cerr << "[Engine::logToFile] Log stream is bad. Attempting to reopen..." << std::endl;
+        m_debugLog.close(); // Close if already open but bad
+        m_debugLog.open("EngineLog.txt", std::ios::app); // Try reopening
+        
+        // Check again after trying to reopen
         if (!m_debugLog.is_open() || !m_debugLog.good()) {
-            std::cerr << "Failed to reopen log file. Logging to stderr instead." << std::endl;
-            std::cerr << message << std::endl; // Fallback to stderr
-            return;
+            std::cerr << "[Engine::logToFile] Failed to reopen log stream. Further logs may be lost." << std::endl;
+            // Optionally, could disable further logging attempts here
+            return; // Cannot log if stream is bad and cannot be reopened
+        } else {
+             std::cerr << "[Engine::logToFile] Log stream reopened successfully." << std::endl;
+             // Log the original message now that the stream is good
         }
-        std::cerr << "Log stream reopened successfully." << std::endl;
     }
-    m_debugLog << message << std::endl;
+
+    // Proceed with logging if the stream is good
+    auto now = std::chrono::system_clock::now();
+    auto now_c = std::chrono::system_clock::to_time_t(now);
+    m_debugLog << std::put_time(std::localtime(&now_c), "%Y-%m-%d %H:%M:%S") << " | " << message << std::endl;
 }
 
 Engine::Engine() 
