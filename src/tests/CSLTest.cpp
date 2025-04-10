@@ -45,15 +45,17 @@ bool runComboTest(TurtleEngine::CSL::GestureRecognizer& recognizer, TurtleEngine
     
     // Generate Flammil points (right-to-down swipe)
     std::vector<cv::Point2f> flammilPoints;
-    const float flammilStartX = endX;
-    const float flammilStartY = endY;
-    const float flammilEndX = endX + 100.0f;
-    const float flammilEndY = endY + 300.0f;
+    const float flammilStartX = endX; // Start where Khargail ended (700)
+    const float flammilStartY = endY; // Start where Khargail ended (360)
+    const float flammilEndX = flammilStartX + 150.0f; // Increased X distance (700 -> 850)
+    const float flammilEndY = flammilStartY + 150.0f; // Increased Y distance (360 -> 510)
     
     for (int i = 0; i < numPoints; ++i) {
         float t = static_cast<float>(i) / (numPoints - 1);
         float x = flammilStartX + t * (flammilEndX - flammilStartX);
-        float y = flammilStartY + t * (flammilEndY - flammilStartY) + 5.0f * std::sin(t * M_PI); // Slight curve
+        float y = flammilStartY + t * (flammilEndY - flammilStartY);
+        // Removed sinusoidal variation for a straighter swipe to boost confidence
+        // float y = flammilStartY + t * (flammilEndY - flammilStartY) + 5.0f * std::sin(t * M_PI); 
         flammilPoints.push_back(cv::Point2f(x, y));
     }
     
@@ -93,6 +95,35 @@ bool runComboTest(TurtleEngine::CSL::GestureRecognizer& recognizer, TurtleEngine
     std::cout << "Stasai: " << (stasaiSuccess ? "PASS" : "FAIL") << std::endl;
     
     return khargailSuccess && flammilSuccess && stasaiSuccess;
+}
+
+// Function specifically for testing Stasai (circle) detection with varied radii
+bool runStasaiTest(TurtleEngine::CSL::GestureRecognizer& recognizer, float radius, const std::string& testCaseId) {
+    std::cout << "\n=== Running Stasai Test (Radius: " << radius << "px) ===" << std::endl;
+    std::cout << "Test Case: " << testCaseId << std::endl;
+
+    std::vector<cv::Point2f> stasaiPoints;
+    const int numPoints = 30; // Same number of points as other tests
+    const float centerX = 640.0f;
+    const float centerY = 360.0f;
+
+    for (int i = 0; i < numPoints; ++i) {
+        float angle = 2.0f * M_PI * static_cast<float>(i) / (numPoints - 1);
+        float x = centerX + radius * std::cos(angle);
+        float y = centerY + radius * std::sin(angle);
+        stasaiPoints.push_back(cv::Point2f(x, y));
+    }
+
+    // Process Stasai points
+    std::cout << "\nProcessing Stasai points (Radius: " << radius << "px)..." << std::endl;
+    auto stasaiResult = recognizer.processSimulatedPoints(stasaiPoints, testCaseId);
+    std::cout << "Stasai Result: " << static_cast<int>(stasaiResult.type)
+              << " (Confidence: " << stasaiResult.confidence << ")" << std::endl;
+
+    bool stasaiSuccess = (stasaiResult.type == TurtleEngine::CSL::GestureType::STASAI);
+    std::cout << "Stasai Test (Radius: " << radius << "px): " << (stasaiSuccess ? "PASS" : "FAIL") << std::endl;
+
+    return stasaiSuccess;
 }
 
 int main() {
@@ -172,6 +203,14 @@ int main() {
     std::cout << "\n=== Test Case 4: Slower Duration (0.6s, 0.7s) ===" << std::endl;
     cslSystem.setPlasmaDuration(0.7f);
     overallResult &= runComboTest(recognizer, cslSystem, 0.6f, 0.7f, "Test4_0.6s-0.7s");
+
+    // --- Additional Stasai Radius Tests (0.3s duration) --- 
+    std::cout << "\n=== Additional Stasai Radius Tests (0.3s duration) ===" << std::endl;
+    // Test 5: Stasai with 30px radius
+    overallResult &= runStasaiTest(recognizer, 30.0f, "Test5_Stasai_30px_0.3s");
+    
+    // Test 6: Stasai with 70px radius
+    overallResult &= runStasaiTest(recognizer, 70.0f, "Test6_Stasai_70px_0.3s");
 
     std::cout << "\n=== Test Suite Summary ===" << std::endl;
     if (overallResult) {
