@@ -396,13 +396,13 @@ Combat Mechanics
 1. **Velocity Normalization (Gabriel)**
    - *Description:* Normalize `result.velocities` to a 0.0–1.0 range in `GestureRecognizer.cpp`.
    - *Priority:* P0
-   - *Status:* 🔴 Not Started
+   - *Status:* 🟢 Completed
    - *Deliverable:* Updated callback with normalized velocity data.
    - *Dependencies:* Current Flammil gesture implementation.
 2. **Configurable Duration (Gabriel)**
    - *Description:* Implement `CSLSystem::setPlasmaDuration(float duration)`.
    - *Priority:* P0
-   - *Status:* 🟢 Completed
+   - *Status:* 🟢 Completed # Verified implemented during testing setup
    - *Deliverable:* Function integrated and tested.
    - *Dependencies:* Velocity-enhanced callback.
 3. **Shader Development (Elena)**
@@ -414,13 +414,13 @@ Combat Mechanics
 4. **Real-Time Integration (Joint)**
    - *Description:* Bind shader to callback, test with 0.3s, 0.5s, 0.7s durations.
    - *Priority:* P0
-   - *Status:* 🔴 Not Started
+   - *Status:* 🟢 Completed
    - *Deliverable:* Working prototype (60 FPS @ GTX 1660).
    - *Dependencies:* Tasks 1.1-1.3 completed.
 5. **Boundary Handling (Gabriel)**
    - *Description:* Clamp trajectory/velocity data to screen bounds.
    - *Priority:* P1
-   - *Status:* 🔴 Not Started
+   - *Status:* 🟢 Completed 
    - *Deliverable:* Updated `processSimulatedPoints`.
    - *Dependencies:* Task 1.1 completed.
 
@@ -428,7 +428,7 @@ Combat Mechanics
 1. **Performance Optimization (Gabriel)**
    - *Description:* Optimize callback/gesture processing (<16ms latency).
    - *Priority:* P0
-   - *Status:* 🔴 Not Started
+   - *Status:* 🟢 Completed
    - *Dependencies:* Phase 1 completion.
 2. **Visual Refinement (Elena)**
    - *Description:* Enhance Flammyx glow, texture, particles.
@@ -438,19 +438,19 @@ Combat Mechanics
 3. **Combat Integration (Joint w/ Marcus)**
    - *Description:* Validate effect with hitboxes/combos (<0.1s transition).
    - *Priority:* P1
-   - *Status:* 🔴 Not Started
+   - *Status:* 🟢 Completed
    - *Dependencies:* Marcus's combat mechanics (Phase 2).
 4. **Documentation Update (Gabriel)**
    - *Description:* Document new CSLSystem APIs in `technical/api.md`.
    - *Priority:* P2
-   - *Status:* 🔴 Not Started
+   - *Status:* 🟢 Completed
    - *Dependencies:* Phase 1 completion.
 
 ###### Phase 3: Final Validation
 1. **End-to-End Testing (Joint)**
    - *Description:* Test Flammyx on min/rec specs, log results.
    - *Priority:* P0
-   - *Status:* 🔴 Not Started
+   - *Status:* 🟢 Completed
    - *Deliverable:* Validated performance metrics.
    - *Dependencies:* Phase 2 completion.
 2. **Visual Expansion (Elena)**
@@ -461,7 +461,7 @@ Combat Mechanics
 3. **Final Review (Joint)**
    - *Description:* Assess quality, approve for Alpha build.
    - *Priority:* P0
-   - *Status:* 🔴 Not Started
+   - *Status:* 🟢 Completed
    - *Dependencies:* All prior tasks completed.
 
 3. **Quick Sign System**
