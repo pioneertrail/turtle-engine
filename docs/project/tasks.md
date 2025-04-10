@@ -149,6 +149,7 @@
 **Owner**: Gabriel
 **Status**: 🟡 In Progress
 **Priority**: P0
+**Note**: Initial core gesture implementation (Khargail, Flammil, Stasai) and testing complete as of commit 8d6254b (log in b7b43cc), meets Phase 1 targets (>0.7f confidence, <0.5s latency). Pending validation by Marcus (combat integration) and Elena (effects). Other subtasks (Tribe Effects, Quick Sign) remain.
 
 ##### Subtasks
 1. **Gesture Recognition Core**
@@ -285,8 +286,8 @@ Combat Mechanics
 
 ### Art Team
 - **Elena** (Art Lead)
-  - Plasma Concepts (IN PROGRESS)
-  - CSL Mockups (PENDING)
+  - Plasma Concepts (🟢 Completed)
+  - CSL Mockups (🟢 Completed)
 
 ### QA Team
 - **Marcus** (QA Lead)
@@ -332,12 +333,12 @@ Combat Mechanics
 
 ### Visual Prep (Elena, Art Team)
 - **Subtasks:**
-  - Plasma Concepts (IN PROGRESS)
+  - Plasma Concepts (🟢 Completed)
     - Red-orange jets
     - Ember trails
     - Match Flammil aesthetic
   
-  - CSL Mockups (PENDING)
+  - CSL Mockups (🟢 Completed)
     - Hand animations per tribe
     - Flammyx: bold, fiery movements
     - Tempskrak: precise, crystalline gestures
@@ -407,7 +408,7 @@ Combat Mechanics
 3. **Shader Development (Elena)**
    - *Description:* Finalize Flammyx shader using trajectory and normalized velocity.
    - *Priority:* P0
-   - *Status:* 🟡 In Progress
+   - *Status:* 🟢 Completed
    - *Deliverable:* Shader code compatible with OpenGL 4.0.
    - *Dependencies:* Gesture keyframes (provided).
 4. **Real-Time Integration (Joint)**
@@ -432,7 +433,7 @@ Combat Mechanics
 2. **Visual Refinement (Elena)**
    - *Description:* Enhance Flammyx glow, texture, particles.
    - *Priority:* P0
-   - *Status:* 🔴 Not Started
+   - *Status:* 🟢 Completed
    - *Dependencies:* Phase 1 shader integration.
 3. **Combat Integration (Joint w/ Marcus)**
    - *Description:* Validate effect with hitboxes/combos (<0.1s transition).
@@ -455,7 +456,7 @@ Combat Mechanics
 2. **Visual Expansion (Elena)**
    - *Description:* Adapt techniques for Tempskrak effects.
    - *Priority:* P1
-   - *Status:* 🔴 Not Started
+   - *Status:* 🟢 Completed
    - *Dependencies:* Phase 2 refinement.
 3. **Final Review (Joint)**
    - *Description:* Assess quality, approve for Alpha build.
