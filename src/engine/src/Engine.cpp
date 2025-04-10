@@ -5,6 +5,8 @@
 #include <iostream>
 #include <chrono>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <vector>
 #include "csl/CSLSystem.hpp"
 #include "csl/GestureRecognizer.hpp"
 #include "combat/Combo.hpp"
@@ -88,6 +90,32 @@ bool Engine::initialize(const std::string& windowTitle, int width, int height) {
     // Create grid
     m_grid = std::make_unique<Grid>(20, 20, 1.0f);
 
+    // --- Flammyx Setup Start ---
+    // Load Flammyx shader
+    if (!m_flammyxShader.loadFromFiles("shaders/flammyx.vert", "shaders/flammyx.frag")) {
+        std::cerr << "Failed to load Flammyx shader!" << std::endl;
+        // Optionally return false or handle error
+    }
+
+    // Generate VAO and VBO for Flammyx trail
+    glGenVertexArrays(1, &m_flammyxVao);
+    glGenBuffers(1, &m_flammyxVbo);
+
+    glBindVertexArray(m_flammyxVao);
+    glBindBuffer(GL_ARRAY_BUFFER, m_flammyxVbo);
+
+    // Configure vertex attributes (position + velocity)
+    // Position (vec3) at location 0
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    // Velocity (float) at location 1
+    glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+    // --- Flammyx Setup End ---
+
     // Initialize and start CSL System
     if (!m_cslSystem || !m_cslSystem->initialize()) {
         std::cerr << "Failed to initialize CSL System" << std::endl;
@@ -114,6 +142,9 @@ bool Engine::initialize(const std::string& windowTitle, int width, int height) {
     glfwSetKeyCallback(m_window, [](GLFWwindow* w, int key, int scancode, int action, int mods) {
         auto engine = static_cast<Engine*>(glfwGetWindowUserPointer(w));
         if (action == GLFW_PRESS) {
+            // Record key press time for latency measurement
+            auto keyPressTime = std::chrono::high_resolution_clock::now(); 
+
             switch (key) {
                 case GLFW_KEY_ESCAPE:
                     glfwSetWindowShouldClose(w, GLFW_TRUE);
@@ -123,6 +154,21 @@ bool Engine::initialize(const std::string& windowTitle, int width, int height) {
                     break;
                 case GLFW_KEY_S:
                     engine->m_camera.distance = std::min(30.0f, engine->m_camera.distance + 1.0f);
+                    break;
+                // Quick Sign Keys
+                case GLFW_KEY_F: // Trigger Flammil
+                    if (engine->m_cslSystem) {
+                        std::cout << "[Input] F key pressed, triggering Flammil." << std::endl;
+                        // TODO: Pass keyPressTime to triggerGesture or store it for onGestureRecognized
+                        engine->m_cslSystem->triggerGesture(CSL::GestureType::FLAMMIL);
+                    }
+                    break;
+                case GLFW_KEY_C: // Trigger Khargail
+                    if (engine->m_cslSystem) {
+                        std::cout << "[Input] C key pressed, triggering Khargail." << std::endl;
+                        // TODO: Pass keyPressTime to triggerGesture or store it for onGestureRecognized
+                        engine->m_cslSystem->triggerGesture(CSL::GestureType::KHARGAIL);
+                    }
                     break;
             }
         }
@@ -223,32 +269,100 @@ void Engine::onGestureRecognized(const CSL::GestureResult& result) {
     }
 }
 
+void Engine::setCSLSystem(CSL::CSLSystem* sys) {
+    m_cslSystem = sys;
+    if (m_cslSystem) {
+        // Register the callback
+        m_cslSystem->addPlasmaCallback([this](const CSL::GestureResult& result) {
+            this->handleFlammyxGesture(result);
+        });
+        std::cout << "Engine: Registered Flammyx callback with CSLSystem." << std::endl;
+    }
+}
+
+void Engine::handleFlammyxGesture(const CSL::GestureResult& result) {
+    // Ensure this runs safely if called from CSL thread
+    std::lock_guard<std::mutex> lock(m_flammyxMutex);
+
+    if (result.type == CSL::GestureType::FLAMMIL && !result.trajectory.empty() && result.trajectory.size() == result.velocities.size()) {
+        std::cout << "Engine: Received Flammil gesture for rendering. Points: " << result.trajectory.size() << std::endl;
+        std::vector<float> vertexData;
+        vertexData.reserve(result.trajectory.size() * 4); // 3 pos + 1 vel
+
+        for (size_t i = 0; i < result.trajectory.size(); ++i) {
+            vertexData.push_back(result.trajectory[i].x); // x
+            vertexData.push_back(result.trajectory[i].y); // y
+            vertexData.push_back(0.0f);                    // z (assuming 2D for now)
+            vertexData.push_back(result.velocities[i]);    // velocity
+        }
+
+        // Update VBO
+        glBindBuffer(GL_ARRAY_BUFFER, m_flammyxVbo);
+        // Use glBufferData to resize and upload new data (GL_DYNAMIC_DRAW hints usage pattern)
+        glBufferData(GL_ARRAY_BUFFER, vertexData.size() * sizeof(float), vertexData.data(), GL_DYNAMIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        m_flammyxPointCount = result.trajectory.size();
+        // Set duration based on CSLSystem setting (if available and valid)
+        if (m_cslSystem) {
+             m_flammyxDuration = m_cslSystem->getPlasmaDuration();
+        } else {
+             m_flammyxDuration = 0.5f; // Default duration if CSL system not set
+        }
+    }
+}
+
 void Engine::run() {
+    double lastTime = glfwGetTime(); // For delta time calculation
+
     while (m_isRunning && !glfwWindowShouldClose(m_window)) {
-        // Calculate frame time
-        auto currentTime = glfwGetTime();
-        m_performance.frameTime = currentTime - m_performance.lastFrameTime;
-        m_performance.lastFrameTime = currentTime;
-        m_performance.fps = static_cast<int>(1.0 / m_performance.frameTime);
+        // Calculate frame time / delta time
+        double currentTime = glfwGetTime();
+        double deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
+        
+        m_performance.frameTime = deltaTime;
+        m_performance.fps = static_cast<int>(1.0 / deltaTime);
 
         processInput();
-        
-        // Update CSL System
+        updateCamera();
+
+        // Update CSL System (if set)
         if (m_cslSystem) {
             m_cslSystem->update();
         }
 
-        updateCamera();
-
         // Clear buffers
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f); // Dark grey background
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Create view and projection matrices
         glm::mat4 view = glm::lookAt(m_camera.position, m_camera.target, m_camera.up);
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f/600.0f, 0.1f, 100.0f);
+        glm::mat4 mvp = projection * view; // Calculate MVP once
 
         // Render grid
         m_grid->render(view, projection);
+
+        // --- Render Flammyx Trail Start ---
+        {
+            std::lock_guard<std::mutex> lock(m_flammyxMutex);
+            if (m_flammyxPointCount > 0) {
+                m_flammyxShader.use();
+                m_flammyxShader.setMat4("MVP", mvp);
+                
+                glBindVertexArray(m_flammyxVao);
+                glDrawArrays(GL_LINE_STRIP, 0, m_flammyxPointCount);
+                glBindVertexArray(0);
+                
+                // Update duration and potentially clear points
+                m_flammyxDuration -= static_cast<float>(deltaTime);
+                if (m_flammyxDuration <= 0.0f) {
+                    m_flammyxPointCount = 0; // Trail fades
+                }
+            }
+        }
+        // --- Render Flammyx Trail End ---
 
         // Swap buffers and poll events
         glfwSwapBuffers(m_window);
@@ -261,6 +375,18 @@ void Engine::shutdown() {
     if (m_cslSystem) {
         m_cslSystem->stop();
     }
+
+    // --- Flammyx Cleanup Start ---
+    if (m_flammyxVao != 0) {
+        glDeleteVertexArrays(1, &m_flammyxVao);
+        m_flammyxVao = 0;
+    }
+    if (m_flammyxVbo != 0) {
+        glDeleteBuffers(1, &m_flammyxVbo);
+        m_flammyxVbo = 0;
+    }
+    // Shader object is cleaned up by its destructor
+    // --- Flammyx Cleanup End ---
 
     if (m_window) {
         glfwDestroyWindow(m_window);

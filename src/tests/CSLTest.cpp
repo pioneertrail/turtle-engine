@@ -170,6 +170,58 @@ bool runHighVelocityTest(TurtleEngine::CSL::GestureRecognizer& recognizer, const
     return clampingVerified; 
 }
 
+// Function to directly extract and log specific metrics for 0.15s tests
+bool runLogExtractTest(TurtleEngine::CSL::GestureRecognizer& recognizer, const std::string& testCaseId) {
+    std::cout << "\n=== Running Log Extraction Test (0.15s Focus) ===" << std::endl;
+    std::cout << "Test Case: " << testCaseId << std::endl;
+
+    bool flammilExtractSuccess = false;
+    bool stasaiExtractSuccess = false;
+    const int numPoints = 30;
+
+    // --- Flammil 0.15s Extraction ---
+    std::cout << "\n-- Extracting Flammil (0.15s) Metrics --" << std::endl;
+    {
+        std::vector<cv::Point2f> flammilPoints;
+        // Use the same adjusted points as runComboTest for consistency
+        const float startX = 700.0f; // Assuming Khargail ended here
+        const float startY = 360.0f;
+        const float endX = startX + 150.0f;
+        const float endY = startY + 150.0f;
+        for (int i = 0; i < numPoints; ++i) {
+            float t = static_cast<float>(i) / (numPoints - 1);
+            flammilPoints.push_back(cv::Point2f(startX + t * (endX - startX), startY + t * (endY - startY)));
+        }
+        auto result = recognizer.processSimulatedPoints(flammilPoints, testCaseId + "_FLAMMIL_EXTRACT");
+        std::cout << "  Flammil Result Type: " << static_cast<int>(result.type) << std::endl;
+        std::cout << "  Flammil Confidence: " << std::fixed << std::setprecision(3) << result.confidence << std::endl;
+        std::cout << "  Flammil Processing Duration (ms): " << std::fixed << std::setprecision(3) << result.transitionLatency << std::endl; // Using transitionLatency for duration
+        flammilExtractSuccess = (result.type == TurtleEngine::CSL::GestureType::FLAMMIL);
+    }
+
+    // --- Stasai 0.15s Extraction ---
+    std::cout << "\n-- Extracting Stasai (0.15s) Metrics --" << std::endl;
+    {
+        std::vector<cv::Point2f> stasaiPoints;
+        const float centerX = 640.0f;
+        const float centerY = 360.0f;
+        const float radius = 50.0f; // Standard radius from combo test
+        for (int i = 0; i < numPoints; ++i) {
+            float angle = 2.0f * M_PI * static_cast<float>(i) / (numPoints - 1);
+            stasaiPoints.push_back(cv::Point2f(centerX + radius * std::cos(angle), centerY + radius * std::sin(angle)));
+        }
+        auto result = recognizer.processSimulatedPoints(stasaiPoints, testCaseId + "_STASAI_EXTRACT");
+        std::cout << "  Stasai Result Type: " << static_cast<int>(result.type) << std::endl;
+        std::cout << "  Stasai Confidence: " << std::fixed << std::setprecision(3) << result.confidence << std::endl;
+        std::cout << "  Stasai Processing Duration (ms): " << std::fixed << std::setprecision(3) << result.transitionLatency << std::endl; // Using transitionLatency for duration
+        stasaiExtractSuccess = (result.type == TurtleEngine::CSL::GestureType::STASAI);
+    }
+
+    bool overallSuccess = flammilExtractSuccess && stasaiExtractSuccess;
+    std::cout << "\nLog Extraction Test Result: " << (overallSuccess ? "PASS (Metrics Logged)" : "FAIL (Check Recognition)") << std::endl;
+    return overallSuccess;
+}
+
 int main() {
     std::cout << "Starting CSLTest" << std::endl;
     TurtleEngine::CSL::GestureRecognizer recognizer;
@@ -259,6 +311,10 @@ int main() {
     // --- High Velocity Normalization Test --- 
     std::cout << "\n=== High Velocity Normalization Test ===" << std::endl;
     overallResult &= runHighVelocityTest(recognizer, "Test7_HighVelocity");
+
+    // --- Direct Log Extraction Test for 0.15s --- 
+    std::cout << "\n=== Direct Log Extraction Test (0.15s) ===" << std::endl;
+    overallResult &= runLogExtractTest(recognizer, "Test8_LogExtract");
 
     std::cout << "\n=== Test Suite Summary ===" << std::endl;
     if (overallResult) {

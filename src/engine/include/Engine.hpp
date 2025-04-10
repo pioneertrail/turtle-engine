@@ -7,9 +7,11 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include "Grid.hpp"
+#include "Shader.hpp"
 #include "csl/CSLSystem.hpp"
 #include "csl/GestureRecognizer.hpp"
 #include "combat/Combo.hpp"
+#include <mutex>
 // Forward declare CSLSystem to avoid full include here if possible
 // #include "csl/CSLSystem.hpp" 
 
@@ -40,7 +42,13 @@ public:
     // Cleanup
     void shutdown();
 
+    // Set the CSL System instance
+    void setCSLSystem(CSL::CSLSystem* sys);
+
 private:
+    // Callback handler for Flammyx gestures
+    void handleFlammyxGesture(const CSL::GestureResult& result);
+
     // Hardware detection and configuration
     void detectHardwareCapabilities();
     void configureOpenGLContext();
@@ -53,7 +61,7 @@ private:
     // Core components
     GLFWwindow* m_window;
     bool m_isRunning;
-    std::unique_ptr<CSL::CSLSystem> m_cslSystem;
+    CSL::CSLSystem* m_cslSystem = nullptr; // Pointer to CSL System
     std::unique_ptr<ComboManager> m_comboManager;
     std::vector<ComboSequence> m_definedCombos;
     
@@ -69,6 +77,14 @@ private:
 
     // Grid
     std::unique_ptr<Grid> m_grid;
+
+    // Flammyx Effect Rendering
+    Shader m_flammyxShader;
+    GLuint m_flammyxVao = 0;
+    GLuint m_flammyxVbo = 0;
+    size_t m_flammyxPointCount = 0;
+    float m_flammyxDuration = 0.0f;
+    std::mutex m_flammyxMutex;
     
     // Hardware info
     struct {

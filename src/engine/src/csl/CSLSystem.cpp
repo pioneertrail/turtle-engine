@@ -163,28 +163,65 @@ void CSLSystem::processFrame(const cv::Mat& frame) {
     if (!m_gestureRecognizer) {
         return;
     }
-
+    // Process frame using the recognizer
     GestureResult result = m_gestureRecognizer->processFrame(frame);
     
-    // Store the last gesture result
+    // Store the actual last gesture result from camera input
     {
         std::lock_guard<std::mutex> lock(m_resultMutex);
         m_lastGestureResult = result;
     }
     
-    // Only notify callbacks if confidence is high enough
-    if (result.confidence >= 0.7f) { // Using default minimum confidence
-        for (const auto& callback : m_callbacks) {
-            callback(result);
-        }
-        // Trigger plasma effect if Flammil (Check against specific threshold)
-        float flammilThreshold = m_gestureRecognizer->getGestureThreshold(GestureType::FLAMMIL);
-        if (result.type == GestureType::FLAMMIL && result.confidence >= flammilThreshold) { // Use specific threshold
-            for (const auto& plasmaCallback : m_plasmaCallbacks) {
-                plasmaCallback(result);
-            }
+    // Invoke callbacks based on confidence etc. from actual recognition
+    // Use the default minimum confidence for general callbacks
+    if (result.confidence >= m_gestureRecognizer->getMinConfidence()) { 
+         invokeCallbacks(result);
+    }
+}
+
+// New method to trigger gesture from code
+void CSLSystem::triggerGesture(GestureType type) {
+    if (type == GestureType::NONE) return;
+
+    // Construct a simulated high-confidence result
+    GestureResult result;
+    result.type = type;
+    result.confidence = 1.0f; // Simulate high confidence
+    result.position = cv::Point2f(0, 0); // Dummy position
+    result.timestamp = std::chrono::high_resolution_clock::now();
+    result.endTimestamp = result.timestamp; // Instantaneous for triggered gesture
+    result.transitionLatency = 0.0f; // No real transition
+    // result.trajectory.clear(); // Empty trajectory
+    // result.velocities.clear(); // Empty velocities
+
+    // Store as last result (optional, might confuse real recognition)
+    // {
+    //     std::lock_guard<std::mutex> lock(m_resultMutex);
+    //     m_lastGestureResult = result;
+    // }
+
+    std::cout << "CSLSystem: Triggering gesture type " << static_cast<int>(type) << std::endl;
+    // Invoke callbacks directly
+    invokeCallbacks(result);
+}
+
+// Helper to invoke callbacks (handles general and specific like plasma)
+void CSLSystem::invokeCallbacks(const GestureResult& result) {
+     // Notify general callbacks
+    for (const auto& callback : m_callbacks) {
+        callback(result);
+    }
+
+    // Specific callbacks (e.g., Plasma for Flammil)
+    if (result.type == GestureType::FLAMMIL) {
+        float flammilThreshold = m_gestureRecognizer ? m_gestureRecognizer->getGestureThreshold(GestureType::FLAMMIL) : 0.75f; 
+        if (result.confidence >= flammilThreshold) {
+             for (const auto& plasmaCallback : m_plasmaCallbacks) {
+                 plasmaCallback(result);
+             }
         }
     }
+    // TODO: Add similar specific callback logic for other gestures/effects if needed
 }
 
 } // namespace CSL

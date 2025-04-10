@@ -49,6 +49,9 @@ public:
     void setPlasmaDuration(float duration);
     float getPlasmaDuration() const { return m_plasmaDuration; }
 
+    // Trigger a gesture recognition result directly (e.g., from keybind)
+    void triggerGesture(GestureType type);
+
 private:
     // Camera capture thread function
     void cameraCaptureThread();
@@ -72,6 +75,8 @@ private:
     // Last gesture result
     mutable std::mutex m_resultMutex;
     GestureResult m_lastGestureResult;
+
+    void invokeCallbacks(const GestureResult& result); // Helper to invoke all relevant callbacks
 };
 
 } // namespace CSL
