@@ -275,27 +275,41 @@ void Engine::onGestureRecognized(const CSL::GestureResult& result) {
     // Note: result.trajectory and result.velocities may be empty if the gesture was
     // directly triggered (e.g., via keybind in CSLSystem::triggerGesture) instead of
     // recognized from tracked points. The logic here needs to account for this.
-    // Currently, this block uses a hardcoded test path for FLAMMIL regardless.
-    if (result.type == CSL::GestureType::FLAMMIL && m_particleSystem) {
-        std::cout << "    Forcing FLAMMIL ember test..." << std::endl;
-        std::vector<cv::Point2f> testTrajectory = {{100, 100}, {150, 150}, {200, 200}};
-        std::vector<float> testVelocities = {0.3f, 0.6f, 0.9f};
-        
-        // For consistency in testing, use a fixed window size
-        const int windowWidth = 1280;
-        const int windowHeight = 720;
-        
-        for (size_t i = 0; i < testTrajectory.size(); ++i) {
-            float velocityNormalized = testVelocities[i];
-            float intensity = glm::clamp(0.5f + pow(velocityNormalized, 2.0f) * 0.5f, 0.5f, 1.0f);
-            float hotMix = glm::smoothstep(0.6f, 0.9f, velocityNormalized);
-            glm::vec3 dynamicColorVec3 = glm::mix(glm::vec3(1.0, 0.4, 0.0), glm::vec3(1.0, 0.8, 0.2), hotMix) * intensity;
-            glm::vec4 emberColor = glm::vec4(dynamicColorVec3, 0.8f);
-            float ndcX = (testTrajectory[i].x / static_cast<float>(windowWidth)) * 2.0f - 1.0f;
-            float ndcY = 1.0f - (testTrajectory[i].y / static_cast<float>(windowHeight)) * 2.0f;
-            glm::vec3 spawnPos = glm::vec3(ndcX * 5.0f, ndcY * 5.0f, -1.0f);
-            float lifetime = 0.4f + (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 0.2f * 2.0f;
-            m_particleSystem->spawnBurst(3, spawnPos, 0.1f, lifetime, emberColor);
+    // Updated CSLSystem::triggerGesture now provides minimal data for testing.
+    if (result.type == CSL::GestureType::FLAMMIL && m_particleSystem && 
+        !result.trajectory.empty() && result.trajectory.size() == result.velocities.size()) 
+    {
+        std::cout << "    Spawning FLAMMIL ember trail..." << std::endl;
+        int windowWidth, windowHeight;
+        glfwGetFramebufferSize(m_window, &windowWidth, &windowHeight);
+        windowWidth = std::max(1, windowWidth); // Avoid division by zero
+        windowHeight = std::max(1, windowHeight);
+
+        const int spawnRate = 3; // Spawn every N points
+        const float baseLifetime = 0.4f;
+        const float lifetimeVariance = 0.2f;
+        const float baseSpeed = 0.1f; // Low speed for embers
+        const int burstCount = 3; // Anya's chaos factor
+
+        for (size_t i = 0; i < result.trajectory.size(); ++i) {
+            // Ensure we don't access velocities out of bounds if sizes mismatch despite check
+            if (i >= result.velocities.size()) break; 
+
+            if (i % spawnRate == 0) {
+                float velocityNormalized = result.velocities[i]; // Use actual velocity data
+                float intensity = glm::clamp(0.5f + pow(velocityNormalized, 2.0f) * 0.5f, 0.5f, 1.0f); 
+                float hotMix = glm::smoothstep(0.6f, 0.9f, velocityNormalized);
+                glm::vec3 dynamicColorVec3 = glm::mix(glm::vec3(1.0, 0.4, 0.0), glm::vec3(1.0, 0.8, 0.2), hotMix) * intensity;
+                glm::vec4 emberColor = glm::vec4(dynamicColorVec3, 0.8f); // Slightly transparent embers
+
+                float ndcX = (result.trajectory[i].x / static_cast<float>(windowWidth)) * 2.0f - 1.0f;
+                float ndcY = 1.0f - (result.trajectory[i].y / static_cast<float>(windowHeight)) * 2.0f; 
+                glm::vec3 spawnPos = glm::vec3(ndcX * 5.0f, ndcY * 5.0f, -1.0f); // Scale NDC to world units
+                
+                float lifetime = baseLifetime + (static_cast<float>(rand()) / RAND_MAX - 0.5f) * lifetimeVariance * 2.0f;
+                
+                m_particleSystem->spawnBurst(burstCount, spawnPos, baseSpeed, lifetime, emberColor);
+            }
         }
     }
     // --- End FLAMMIL Ember Particles --- 

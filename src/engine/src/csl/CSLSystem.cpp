@@ -195,6 +195,14 @@ void CSLSystem::triggerGesture(GestureType type, std::chrono::high_resolution_cl
     result.transitionLatency = 0.0f; 
     result.triggerTimestamp = triggerTime; // Store the passed timestamp
 
+    // Add minimal FLAMMIL trajectory & velocity for testing particle spawning
+    if (type == GestureType::FLAMMIL) {
+        result.trajectory = {{100, 100}, {150, 150}, {200, 200}};
+        // Provide some non-zero velocities corresponding to the trajectory
+        // These are placeholders and not physically accurate for a trigger.
+        result.velocities = {0.3f, 0.6f, 0.9f};
+    }
+
     std::cout << "CSLSystem: Triggering gesture type " << static_cast<int>(type) << std::endl;
     invokeCallbacks(result);
 }
