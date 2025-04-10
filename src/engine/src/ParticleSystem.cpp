@@ -135,7 +135,12 @@ void ParticleSystem::update(float deltaTime) {
     }
     // Update the VBO if there are active particles
     if (activeParticleCount > 0) {
+        // Log buffer state before updating VBO
+        std::cout << "    [ParticleSystem Update] Active particles found: " << activeParticleCount << ". Buffer size (floats): " << m_particleBufferData.size() << std::endl;
         updateBuffers();
+    } else {
+        // Log if no active particles found
+        std::cout << "    [ParticleSystem Update] No active particles found after update loop." << std::endl;
     }
 }
 
@@ -149,10 +154,10 @@ void ParticleSystem::updateBuffers() {
 
 void ParticleSystem::render(const glm::mat4& view, const glm::mat4& projection) {
     // Entry Log & State Check
-    std::cout << "  [Particle Render] Entered. Initialized: " << m_initialized << ", Buffer Empty: " << m_particleBufferData.empty() << std::endl;
+    std::cout << "  [Particle Render] Entered. Initialized: " << m_initialized << ", Buffer size (floats): " << m_particleBufferData.size() << std::endl;
 
     if (!m_initialized || m_particleBufferData.empty()) {
-        std::cout << "  [Particle Render] Exiting early (Not initialized or buffer empty)." << std::endl;
+        std::cout << "  [Particle Render] Exiting early (Not initialized or buffer empty/zero size)." << std::endl;
         return;
     }
 
