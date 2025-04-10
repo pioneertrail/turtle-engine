@@ -1,4 +1,3 @@
-#define GLEW_STATIC
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include "Engine.hpp"
@@ -11,6 +10,7 @@
 #include "csl/GestureRecognizer.hpp"
 #include "combat/Combo.hpp"
 #include "ParticleSystem.hpp"
+#include <random>
 
 namespace TurtleEngine {
 
@@ -95,32 +95,6 @@ bool Engine::initialize(const std::string& windowTitle, int width, int height) {
     // Create grid
     m_grid = std::make_unique<Grid>(20, 20, 1.0f);
 
-    // --- Flammyx Setup Start ---
-    // Load Flammyx shader
-    if (!m_flammyxShader.loadFromFiles("shaders/flammyx.vert", "shaders/flammyx.frag")) {
-        std::cerr << "Failed to load Flammyx shader!" << std::endl;
-        // Optionally return false or handle error
-    }
-
-    // Generate VAO and VBO for Flammyx trail
-    glGenVertexArrays(1, &m_flammyxVao);
-    glGenBuffers(1, &m_flammyxVbo);
-
-    glBindVertexArray(m_flammyxVao);
-    glBindBuffer(GL_ARRAY_BUFFER, m_flammyxVbo);
-
-    // Configure vertex attributes (position + velocity)
-    // Position (vec3) at location 0
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    // Velocity (float) at location 1
-    glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-    // --- Flammyx Setup End ---
-
     // Initialize and start CSL System
     if (!m_cslSystem || !m_cslSystem->initialize()) {
         std::cerr << "Failed to initialize CSL System" << std::endl;
@@ -170,15 +144,15 @@ bool Engine::initialize(const std::string& windowTitle, int width, int height) {
                 case GLFW_KEY_F: // Trigger Flammil
                     if (engine->m_cslSystem) {
                         std::cout << "[Input] F key pressed, triggering Flammil." << std::endl;
-                        // Corrected: Call with only one argument
-                        engine->m_cslSystem->triggerGesture(CSL::GestureType::FLAMMIL);
+                        // Corrected: Call with type and timestamp
+                        engine->m_cslSystem->triggerGesture(CSL::GestureType::FLAMMIL, keyPressTime);
                     }
                     break;
                 case GLFW_KEY_C: // Trigger Khargail
                     if (engine->m_cslSystem) {
                         std::cout << "[Input] C key pressed, triggering Khargail." << std::endl;
-                        // Corrected: Call with only one argument
-                        engine->m_cslSystem->triggerGesture(CSL::GestureType::KHARGAIL);
+                        // Corrected: Call with type and timestamp
+                        engine->m_cslSystem->triggerGesture(CSL::GestureType::KHARGAIL, keyPressTime);
                     }
                     break;
             }
@@ -260,37 +234,31 @@ void Engine::onGestureRecognized(const CSL::GestureResult& result) {
               << " | Confidence: " << result.confidence 
               << std::endl;
 
+    // Add debug logging for trajectory and velocities
+    std::cout << "[Gesture Debug] Type: " << static_cast<int>(result.type) 
+              << ", Trajectory Size: " << result.trajectory.size() 
+              << ", Velocities Size: " << result.velocities.size() << std::endl;
+
     // --- Latency Check for Triggered Gestures --- 
     if (result.triggerTimestamp.has_value()) {
         auto callbackTime = std::chrono::high_resolution_clock::now();
         auto totalLatency = std::chrono::duration_cast<std::chrono::microseconds>(callbackTime - result.triggerTimestamp.value());
         std::cout << "    QuickSign Latency (Key Press -> Callback): " << totalLatency.count() << " us" << std::endl;
         // TODO: Log this to gesture_recognition_results.txt as required by task
-        // TODO: Check against <0.5s requirement from task list
         if (totalLatency.count() > 500000) { // 0.5 seconds
             std::cerr << "!!!! WARNING: QuickSign latency > 500ms !!!!" << std::endl;
         }
     }
     // --- End Latency Check ---
 
-    // --- TEMPORARY: Spawn particles on gesture --- 
-    if (m_particleSystem && result.type != CSL::GestureType::NONE) {
-        glm::vec3 spawnPos = glm::vec3(0.0f, 1.0f, 0.0f); // Fixed spawn point for now
-        // Later, this position should come from hitbox collision point
-        glm::vec4 sparkColor = glm::vec4(1.0f, 0.8f, 0.2f, 1.0f); // Yellow/orange spark
-        float initialSpeed = 5.0f;
-        float lifetime = 0.5f;
-        int count = 20; // Number of particles per spark
-        std::cout << "    Spawning particle burst at (" << spawnPos.x << "," << spawnPos.y << "," << spawnPos.z << ")" << std::endl;
-        m_particleSystem->spawnBurst(count, spawnPos, initialSpeed, lifetime, sparkColor);
-    }
-    // --- End Temporary Spawn ---
-
-    // Process the move via ComboManager if a valid gesture name was found
+    // Process the move via ComboManager 
+    bool moveProcessed = false;
+    std::string currentComboMove;
     if (m_comboManager && gestureName != "UNKNOWN" && gestureName != "None") {
         // Timing for ComboManager processing itself
         auto start_time = std::chrono::high_resolution_clock::now();
         m_comboManager->ProcessMove(gestureName);
+        currentComboMove = m_comboManager->getCurrentStateDebug(); // Get state *after* processing
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
         std::cout << "    ComboManager::ProcessMove took: " << duration.count() << " us" << std::endl;
@@ -298,61 +266,54 @@ void Engine::onGestureRecognized(const CSL::GestureResult& result) {
         if (duration.count() > 100000) {
             std::cerr << "!!!! WARNING: Combo processing took longer than 100ms !!!!" << std::endl;
         }
+        if (!currentComboMove.empty()) { // Check if move resulted in a valid combo state
+             moveProcessed = true;
+        }
     }
+
+    // --- Spawn FLAMMIL Ember Particles --- 
+    if (result.type == CSL::GestureType::FLAMMIL && m_particleSystem) {
+        std::cout << "    Forcing FLAMMIL ember test..." << std::endl;
+        std::vector<cv::Point2f> testTrajectory = {{100, 100}, {150, 150}, {200, 200}};
+        std::vector<float> testVelocities = {0.3f, 0.6f, 0.9f};
+        
+        // For consistency in testing, use a fixed window size
+        const int windowWidth = 1280;
+        const int windowHeight = 720;
+        
+        for (size_t i = 0; i < testTrajectory.size(); ++i) {
+            float velocityNormalized = testVelocities[i];
+            float intensity = glm::clamp(0.5f + pow(velocityNormalized, 2.0f) * 0.5f, 0.5f, 1.0f);
+            float hotMix = glm::smoothstep(0.6f, 0.9f, velocityNormalized);
+            glm::vec3 dynamicColorVec3 = glm::mix(glm::vec3(1.0, 0.4, 0.0), glm::vec3(1.0, 0.8, 0.2), hotMix) * intensity;
+            glm::vec4 emberColor = glm::vec4(dynamicColorVec3, 0.8f);
+            float ndcX = (testTrajectory[i].x / static_cast<float>(windowWidth)) * 2.0f - 1.0f;
+            float ndcY = 1.0f - (testTrajectory[i].y / static_cast<float>(windowHeight)) * 2.0f;
+            glm::vec3 spawnPos = glm::vec3(ndcX * 5.0f, ndcY * 5.0f, -1.0f);
+            float lifetime = 0.4f + (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 0.2f * 2.0f;
+            m_particleSystem->spawnBurst(3, spawnPos, 0.1f, lifetime, emberColor);
+        }
+    }
+    // --- End FLAMMIL Ember Particles --- 
+
+    // --- Spawn particles based on SUCCESSFUL Combo Move processing --- 
+    if (moveProcessed && m_particleSystem) {
+         // If a move was processed AND resulted in a valid combo state 
+         glm::vec3 spawnPos = glm::vec3(0.0f, 1.0f, -2.0f); // Fixed spawn point IN FRONT of origin
+        // TODO: Replace with actual collision point from hitbox check
+        glm::vec4 sparkColor = glm::vec4(1.0f, 0.8f, 0.2f, 1.0f); // Yellow/orange spark
+        float initialSpeed = 5.0f;
+        float lifetime = 0.5f;
+        int count = 20;
+        std::cout << "    Spawning HIT particle burst for move: " << currentComboMove << std::endl;
+        m_particleSystem->spawnBurst(count, spawnPos, initialSpeed, lifetime, sparkColor);
+    }
+    // --- End Hit Particle Spawn ---
 }
 
 void Engine::setCSLSystem(CSL::CSLSystem* sys) {
     // Correctly manage ownership with unique_ptr
     m_cslSystem.reset(sys); 
-    if (m_cslSystem) {
-        // Register the callback
-        m_cslSystem->addPlasmaCallback([this](const CSL::GestureResult& result) {
-            this->handleFlammyxGesture(result);
-        });
-        std::cout << "Engine: Registered Flammyx callback with CSLSystem." << std::endl;
-    }
-}
-
-void Engine::handleFlammyxGesture(const CSL::GestureResult& result) {
-    // Ensure this runs safely if called from CSL thread
-    std::lock_guard<std::mutex> lock(m_flammyxMutex);
-
-    if (result.type == CSL::GestureType::FLAMMIL && !result.trajectory.empty() && result.trajectory.size() == result.velocities.size()) {
-        std::cout << "Engine: Received Flammil gesture for rendering. Points: " << result.trajectory.size() << std::endl;
-        std::vector<float> vertexData;
-        vertexData.reserve(result.trajectory.size() * 4); // 3 pos + 1 vel
-
-        int windowWidth, windowHeight;
-        glfwGetFramebufferSize(m_window, &windowWidth, &windowHeight);
-
-        for (size_t i = 0; i < result.trajectory.size(); ++i) {
-            float ndcX = (result.trajectory[i].x / static_cast<float>(windowWidth)) * 2.0f - 1.0f;
-            float ndcY = 1.0f - (result.trajectory[i].y / static_cast<float>(windowHeight)) * 2.0f; // Invert Y for OpenGL coords
-
-            // Clamp coordinates to NDC range [-1, 1]
-            ndcX = glm::clamp(ndcX, -1.0f, 1.0f);
-            ndcY = glm::clamp(ndcY, -1.0f, 1.0f);
-
-            vertexData.push_back(ndcX); // Clamped X
-            vertexData.push_back(ndcY); // Clamped Y
-            vertexData.push_back(0.0f);                    // z (assuming 2D for now)
-            vertexData.push_back(result.velocities[i]);    // velocity
-        }
-
-        // Update VBO
-        glBindBuffer(GL_ARRAY_BUFFER, m_flammyxVbo);
-        // Use glBufferData to resize and upload new data (GL_DYNAMIC_DRAW hints usage pattern)
-        glBufferData(GL_ARRAY_BUFFER, vertexData.size() * sizeof(float), vertexData.data(), GL_DYNAMIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        m_flammyxPointCount = result.trajectory.size();
-        // Set duration based on CSLSystem setting (if available and valid)
-        if (m_cslSystem) {
-             m_flammyxDuration = m_cslSystem->getPlasmaDuration();
-        } else {
-             m_flammyxDuration = 0.5f; // Default duration if CSL system not set
-        }
-    }
 }
 
 void Engine::run() {
@@ -375,9 +336,13 @@ void Engine::run() {
             m_cslSystem->update();
         }
 
-        // Update Particle System
+        // Update Particle System & Log Time
+        double particleUpdateMs = 0.0;
         if (m_particleSystem) {
+            auto particleUpdateStart = std::chrono::high_resolution_clock::now();
             m_particleSystem->update(static_cast<float>(deltaTime));
+            auto particleUpdateEnd = std::chrono::high_resolution_clock::now();
+            particleUpdateMs = std::chrono::duration<double, std::milli>(particleUpdateEnd - particleUpdateStart).count();
         }
 
         // Clear buffers
@@ -392,29 +357,22 @@ void Engine::run() {
         // Render grid
         m_grid->render(view, projection);
 
-        // Render particles
+        // Render particles using the ParticleSystem class & Log Time
+        double particleRenderMs = 0.0;
         if (m_particleSystem) {
+            auto particleRenderStart = std::chrono::high_resolution_clock::now();
             m_particleSystem->render(view, projection);
+            auto particleRenderEnd = std::chrono::high_resolution_clock::now();
+            particleRenderMs = std::chrono::duration<double, std::milli>(particleRenderEnd - particleRenderStart).count();
+        }
+        
+        // Log particle timings
+        // Only log periodically to avoid spamming console (e.g., every 60 frames)
+        static int frameCount = 0;
+        if (++frameCount % 60 == 0) {
+             std::cout << "Particle Update: " << particleUpdateMs << " ms, Render: " << particleRenderMs << " ms\n";
         }
 
-        // --- Render Flammyx Trail Start ---
-        {
-            std::lock_guard<std::mutex> lock(m_flammyxMutex);
-            if (m_flammyxPointCount > 0) {
-                m_flammyxShader.use();
-                m_flammyxShader.setMat4("MVP", mvp);
-                
-                glBindVertexArray(m_flammyxVao);
-                glDrawArrays(GL_LINE_STRIP, 0, m_flammyxPointCount);
-                glBindVertexArray(0);
-                
-                // Update duration and potentially clear points
-                m_flammyxDuration -= static_cast<float>(deltaTime);
-                if (m_flammyxDuration <= 0.0f) {
-                    m_flammyxPointCount = 0; // Trail fades
-                }
-            }
-        }
         // --- Render Flammyx Trail End ---
 
         // Swap buffers and poll events
@@ -428,18 +386,6 @@ void Engine::shutdown() {
     if (m_cslSystem) {
         m_cslSystem->stop();
     }
-
-    // --- Flammyx Cleanup Start ---
-    if (m_flammyxVao != 0) {
-        glDeleteVertexArrays(1, &m_flammyxVao);
-        m_flammyxVao = 0;
-    }
-    if (m_flammyxVbo != 0) {
-        glDeleteBuffers(1, &m_flammyxVbo);
-        m_flammyxVbo = 0;
-    }
-    // Shader object is cleaned up by its destructor
-    // --- Flammyx Cleanup End ---
 
     if (m_window) {
         glfwDestroyWindow(m_window);

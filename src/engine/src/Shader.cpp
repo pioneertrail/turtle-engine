@@ -85,22 +85,40 @@ void Shader::setMat4(const std::string& name, const glm::mat4& mat) const {
     glUniformMatrix4fv(glGetUniformLocation(m_program, name.c_str()), 1, GL_FALSE, glm::value_ptr(mat));
 }
 
-bool Shader::checkCompileErrors(unsigned int shader, const std::string& type) {
-    int success;
+bool Shader::checkCompileErrors(unsigned int shaderOrProgram, const std::string& type) {
+    int success = 0; // Initialize to 0
     char infoLog[1024];
+    for(int i=0; i<1024; ++i) infoLog[i] = '\0'; // Clear log buffer
+
+    // Add check for valid ID
+    if (shaderOrProgram == 0) {
+        std::cout << "ERROR::SHADER: Invalid ID (0) passed to checkCompileErrors for type: " << type << std::endl;
+        return false;
+    }
+
     if (type != "PROGRAM") {
-        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+        // Check Shader Compilation
+        std::cout << "DEBUG::SHADER: Checking compile status for " << type << " (ID: " << shaderOrProgram << ")" << std::endl;
+        glGetShaderiv(shaderOrProgram, GL_COMPILE_STATUS, &success);
         if (!success) {
-            glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-            std::cout << "ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n" << infoLog << std::endl;
+            std::cout << "ERROR::SHADER: Compile failed for " << type << " (ID: " << shaderOrProgram << ")" << std::endl;
+            glGetShaderInfoLog(shaderOrProgram, 1024, NULL, infoLog);
+            std::cout << "  InfoLog: " << infoLog << std::endl;
             return false;
+        } else {
+             std::cout << "DEBUG::SHADER: Compile successful for " << type << " (ID: " << shaderOrProgram << ")" << std::endl;
         }
     } else {
-        glGetProgramiv(shader, GL_LINK_STATUS, &success);
+        // Check Program Linking
+        std::cout << "DEBUG::SHADER: Checking link status for " << type << " (ID: " << shaderOrProgram << ")" << std::endl;
+        glGetProgramiv(shaderOrProgram, GL_LINK_STATUS, &success);
         if (!success) {
-            glGetProgramInfoLog(shader, 1024, NULL, infoLog);
-            std::cout << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n" << infoLog << std::endl;
+            std::cout << "ERROR::SHADER: Link failed for " << type << " (ID: " << shaderOrProgram << ")" << std::endl;
+            glGetProgramInfoLog(shaderOrProgram, 1024, NULL, infoLog);
+            std::cout << "  InfoLog: " << infoLog << std::endl;
             return false;
+        } else {
+             std::cout << "DEBUG::SHADER: Link successful for " << type << " (ID: " << shaderOrProgram << ")" << std::endl;
         }
     }
     return true;

@@ -1,16 +1,24 @@
 #version 400 core
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec4 aColor; // Pass color from VBO
 
-uniform mat4 model; // Keep model uniform for potential future use (though likely identity for world-space particles)
-uniform mat4 view;
-uniform mat4 projection;
+// Input vertex attributes for each particle
+layout (location = 0) in vec3 aPos;      // Particle position (updated each frame)
+layout (location = 1) in vec4 aColor;    // Particle color (could include alpha for fade)
+layout (location = 2) in float aSize;     // Particle size
 
-out vec4 particleColor; // Pass color to fragment shader
+// Uniforms
+uniform mat4 viewProjection; // Combined View * Projection matrix
+
+// Outputs to Fragment Shader
+out vec4 particleColor;
 
 void main()
 {
-    gl_Position = projection * view * model * vec4(aPos, 1.0);
+    // Calculate final position in clip space
+    gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
+
+    // Set the size of the point sprite
+    gl_PointSize = 10.0;
+
+    // Pass color to fragment shader
     particleColor = aColor;
-    gl_PointSize = 5.0; // Set a default size for now
 } 
