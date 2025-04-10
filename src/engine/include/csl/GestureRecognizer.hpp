@@ -80,6 +80,10 @@ private:
     void updateTransitionStats(const GestureResult& current, const GestureResult& previous);
     void logGestureResult(const GestureResult& result);
 
+    // --- Velocity Calculation Helpers ---
+    std::vector<float> calculateRawVelocities(const std::vector<cv::Point2f>& points) const; // Assuming const correctness
+    std::vector<float> normalizeVelocities(const std::vector<float>& rawVelocities) const;
+
     // Member variables
     float m_sensitivity;
     float m_minConfidence;

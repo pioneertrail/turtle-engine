@@ -46,6 +46,7 @@ add_library(TurtleEngineCore
     src/engine/src/csl/GestureRecognizer.cpp
     src/engine/src/csl/CSLSystem.cpp
     src/engine/src/combat/Hitbox.cpp
+    src/engine/src/combat/Combo.cpp
 )
 
 # Performance optimization flags for gesture recognition and plasma effects
@@ -118,6 +119,15 @@ if(BUILD_TESTS)
         ${CMAKE_SOURCE_DIR}/src/tests
     )
 
+    # Add Combo test
+    add_executable(ComboTest src/tests/combat/ComboTest.cpp)
+    # ComboTest depends on the core engine library which now includes Combo.cpp implementation
+    target_link_libraries(ComboTest PRIVATE TurtleEngineCore)
+    target_include_directories(ComboTest PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/engine/include
+        ${CMAKE_SOURCE_DIR}/src/tests
+    )
+
     # Add DLL copy commands for HitboxTest if needed (assuming it doesnt need OpenCV DLLs here)
     # if(OpenCV_BIN_DIR AND EXISTS "${OpenCV_BIN_DIR}")
     #     file(GLOB OpenCV_DLLS "${OpenCV_BIN_DIR}/*.dll")
@@ -160,6 +170,18 @@ if(OpenCV_BIN_DIR AND EXISTS "${OpenCV_BIN_DIR}") # Check if vcpkg provided the 
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 ${DLL}
                 $<TARGET_FILE_DIR:CameraTest>)
+        endif()
+        if (TARGET HitboxTest)
+            add_custom_command(TARGET HitboxTest POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${DLL}
+                $<TARGET_FILE_DIR:HitboxTest>)
+        endif()
+        if (TARGET ComboTest)
+            add_custom_command(TARGET ComboTest POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${DLL}
+                $<TARGET_FILE_DIR:ComboTest>)
         endif()
     endforeach()
 endif()

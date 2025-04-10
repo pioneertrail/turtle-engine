@@ -275,7 +275,19 @@ GestureResult GestureRecognizer::processSimulatedPoints(const std::vector<cv::Po
     auto profiler_start = std::chrono::high_resolution_clock::now();
     GestureResult finalResult = {GestureType::NONE, 0.0f, cv::Point2f(), {}, {}, profiler_start, profiler_start, 0.0f}; // Initialize result
 
-    if (points.size() < 3) {
+    // --- Boundary Handling --- 
+    // TODO: Get actual screen dimensions instead of hardcoding
+    const float screenWidth = 1280.0f;
+    const float screenHeight = 720.0f;
+    std::vector<cv::Point2f> clampedPoints = points; // Work on a copy
+    for (auto& pt : clampedPoints) {
+        pt.x = std::max(0.0f, std::min(screenWidth - 1.0f, pt.x));
+        pt.y = std::max(0.0f, std::min(screenHeight - 1.0f, pt.y));
+    }
+    // --- End Boundary Handling ---
+
+    // Use clampedPoints for all subsequent processing
+    if (clampedPoints.size() < 3) { 
         auto profiler_end = std::chrono::high_resolution_clock::now();
         float profiler_duration = std::chrono::duration<float, std::milli>(profiler_end - profiler_start).count();
         if (m_logFile.is_open()) {
@@ -288,7 +300,7 @@ GestureResult GestureRecognizer::processSimulatedPoints(const std::vector<cv::Po
             std::stringstream ss;
             ss << "[" << std::put_time(&timeInfo, "%Y-%m-%d %H:%M:%S")
                << "." << std::setfill('0') << std::setw(3) << ms.count() << "] "
-               << "[Profiler] processSimulatedPoints Early Exit (Points): " << points.size() << " < 3"
+               << "[Profiler] processSimulatedPoints Early Exit (Points): " << clampedPoints.size() << " < 3"
                << ", TestCase: " << testCaseId << ", Duration: " << profiler_duration << " ms" << std::endl;
 
             m_logFile << ss.str();
@@ -302,25 +314,25 @@ GestureResult GestureRecognizer::processSimulatedPoints(const std::vector<cv::Po
     GestureResult bestResult = {GestureType::NONE, 0.0f}; // Start with NONE
 
     // Recognize Khargail
-    auto khargailResult = recognizeKhargail(points);
+    auto khargailResult = recognizeKhargail(clampedPoints);
     if (khargailResult.confidence > bestResult.confidence) {
         bestResult = khargailResult;
     }
 
     // Recognize Flammil
-    auto flammilResult = recognizeFlammil(points);
+    auto flammilResult = recognizeFlammil(clampedPoints);
     if (flammilResult.confidence > bestResult.confidence) {
         bestResult = flammilResult;
     }
 
     // Recognize Stasai
-    auto stasaiResult = recognizeStasai(points, testCaseId); // Pass testCaseId
+    auto stasaiResult = recognizeStasai(clampedPoints, testCaseId); // Pass testCaseId
     if (stasaiResult.confidence > bestResult.confidence) {
         bestResult = stasaiResult;
     }
 
     // Recognize Annihlat
-    auto annihlatResult = recognizeAnnihlat(points);
+    auto annihlatResult = recognizeAnnihlat(clampedPoints);
     if (annihlatResult.confidence > bestResult.confidence) {
         bestResult = annihlatResult;
     }
@@ -339,7 +351,7 @@ GestureResult GestureRecognizer::processSimulatedPoints(const std::vector<cv::Po
             bestResult.timestamp = profiler_start;
             bestResult.endTimestamp = profiler_end;
             bestResult.transitionLatency = profiler_duration; // Using latency field for duration in simulation
-            bestResult.trajectory = points; // Ensure trajectory is included
+            bestResult.trajectory = clampedPoints; // Ensure clamped trajectory is included
 
             if (m_logFile.is_open()) {
                 auto log_now = std::chrono::system_clock::now(); // Use system_clock for wall time logging
@@ -375,6 +387,16 @@ GestureResult GestureRecognizer::processSimulatedPoints(const std::vector<cv::Po
          finalResult.type = GestureType::NONE;
          finalResult.endTimestamp = std::chrono::high_resolution_clock::now();
     }
+
+    // --- Calculate and Normalize Velocities --- 
+    if (finalResult.type != GestureType::NONE) { // Only calculate if a gesture was recognized
+        std::vector<float> raw_velocities = calculateRawVelocities(finalResult.trajectory);
+        finalResult.velocities = normalizeVelocities(raw_velocities);
+    } else {
+        // Ensure velocities vector is empty if no gesture recognized
+        finalResult.velocities.clear(); 
+    }
+    // --- End Velocity Calculation --- 
 
     return finalResult;
 }
@@ -864,6 +886,54 @@ float GestureRecognizer::getGestureThreshold(GestureType type) const {
 }
 
 float GestureRecognizer::getCircleClosureThreshold() const { return m_circleClosureThreshold; }
+
+// --- Velocity Calculation Helper Implementations ---
+
+// Calculates raw velocities assuming a fixed time step between points.
+// TODO: Consider using actual timestamps if available for more accuracy.
+std::vector<float> GestureRecognizer::calculateRawVelocities(const std::vector<cv::Point2f>& points) const {
+    std::vector<float> rawVelocities;
+    if (points.size() < 2) {
+        return rawVelocities; // Need at least two points to calculate velocity
+    }
+
+    // Assuming 60 FPS for simulation time step
+    const float timeStep = 1.0f / 60.0f; 
+    rawVelocities.reserve(points.size() - 1);
+
+    for (size_t i = 1; i < points.size(); ++i) {
+        cv::Point2f displacement = points[i] - points[i - 1];
+        float distance = fastSqrt(displacement.x * displacement.x + displacement.y * displacement.y);
+        float velocity = distance / timeStep;
+        rawVelocities.push_back(velocity);
+    }
+
+    // Handle the first point potentially? Or assume velocity starts from the second point.
+    // For now, the vector has size N-1 compared to N points.
+    return rawVelocities;
+}
+
+// Normalizes raw velocities to the range [0.0, 1.0]
+std::vector<float> GestureRecognizer::normalizeVelocities(const std::vector<float>& rawVelocities) const {
+    std::vector<float> normalizedVelocities;
+    normalizedVelocities.reserve(rawVelocities.size());
+
+    const float targetMaxVelocity = 1500.0f; // As per Marcus's requirement
+
+    for (float rawVelocity : rawVelocities) {
+        if (targetMaxVelocity <= 1e-6) { // Avoid division by zero
+            normalizedVelocities.push_back(0.0f);
+        } else {
+            float normalized = rawVelocity / targetMaxVelocity;
+            // Clamp the value to [0.0, 1.0]
+            normalizedVelocities.push_back(std::max(0.0f, std::min(1.0f, normalized)));
+        }
+    }
+
+    return normalizedVelocities;
+}
+
+// --- End Velocity Helpers ---
 
 } // namespace CSL
 } // namespace TurtleEngine 

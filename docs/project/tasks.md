@@ -184,17 +184,17 @@
 
 ##### Subtasks
 1. **Hitbox Detection**
-   - [ ] Design hitbox data structure
-   - [ ] Implement basic detection
-   - [ ] Create test suite
+   - [x] Design hitbox data structure
+   - [x] Implement basic detection
+   - [x] Create test suite
    - **Dependencies**: CSL Animation System
    - **Estimated Time**: 3 days
 
 2. **Combo System**
-   - [ ] Design combo data structure
-   - [ ] Implement transition detection
-   - [ ] Create test suite
-   - [ ] Ensure transition latency <0.1s
+   - [x] Design combo data structure
+   - [x] Implement transition detection (Placeholder logic)
+   - [x] Create test suite
+   - [ ] Ensure transition latency <0.1s (Blocked by placeholder logic)
    - **Dependencies**: Hitbox Detection
    - **Estimated Time**: 4 days
 
@@ -402,7 +402,7 @@ Combat Mechanics
 2. **Configurable Duration (Gabriel)**
    - *Description:* Implement `CSLSystem::setPlasmaDuration(float duration)`.
    - *Priority:* P0
-   - *Status:* 🔴 Not Started
+   - *Status:* 🟢 Completed
    - *Deliverable:* Function integrated and tested.
    - *Dependencies:* Velocity-enhanced callback.
 3. **Shader Development (Elena)**
