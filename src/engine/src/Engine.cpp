@@ -487,8 +487,9 @@ void Engine::simulateKeyPress(char key) {
     // Expand this later if needed for other keys
     if (m_cslSystem && key == 'F') {
         m_debugLog << "[Engine Test] Triggering FLAMMIL gesture via CSLSystem." << std::endl;
-        // Pass current time for potential latency tracking if CSL uses it
-        m_cslSystem->triggerGesture(CSL::GestureType::FLAMMIL, std::chrono::high_resolution_clock::now()); 
+        // Reverted: Pass current time for potential latency tracking if CSL uses it
+        // m_cslSystem->triggerGesture(CSL::GestureType::FLAMMIL, std::chrono::high_resolution_clock::now()); 
+        m_cslSystem->triggerGesture(CSL::GestureType::FLAMMIL); // Call with one argument
     } else if (!m_cslSystem) {
          m_debugLog << "[Engine Test] CSLSystem is null, cannot trigger gesture." << std::endl;
     }

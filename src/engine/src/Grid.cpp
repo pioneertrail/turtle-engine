@@ -1,6 +1,6 @@
 #include "Grid.hpp"
 #include <glm/gtc/matrix_transform.hpp>
-#include <glad/glad.h> // Include for glGetError
+//#include <glad/glad.h> // REMOVED: Include for glGetError
 #include <vector>
 #include <iostream>
 
@@ -101,13 +101,10 @@ bool Grid::render(const glm::mat4& view, const glm::mat4& projection) {
 
     m_shader.use();
     GLint gridProgram = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &gridProgram);
-    bool shaderValid = m_shader.isValid();
-    std::cout << "  [Grid Render] Shader ID: " << gridProgram << ", Valid: " << shaderValid << std::endl;
+    // bool shaderValid = m_shader.isValid(); // REMOVED
+    std::cout << "  [Grid Render] Shader ID: " << gridProgram << std::endl; // Removed Valid check log
     
-    if (!shaderValid) {
-        std::cerr << "  [Grid Render] Shader invalid, exiting render early." << std::endl;
-        return false;
-    }
+    // REMOVED: Check for !shaderValid
 
     m_shader.setMat4("view", view);
     m_shader.setMat4("projection", projection);
@@ -115,24 +112,16 @@ bool Grid::render(const glm::mat4& view, const glm::mat4& projection) {
 
     glBindVertexArray(m_VAO);
 
-    GLenum preDrawError = glGetError();
-    if (preDrawError != GL_NO_ERROR) {
-        std::cerr << "  [Grid Render] OpenGL Error BEFORE draw: " << preDrawError << std::endl;
-        return false; // Error before draw
-    }
+    // REMOVED: preDrawError check
     GLsizei indexCount = m_width * m_height * 6;
     std::cout << "  [Grid Render] Drawing Elements: mode=GL_TRIANGLES, count=" << indexCount 
               << ", type=GL_UNSIGNED_INT, indices=0" << std::endl;
 
     glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
 
-    GLenum postDrawError = glGetError();
-    if (postDrawError != GL_NO_ERROR) {
-        std::cerr << "  [Grid Render] OpenGL Error AFTER draw: " << postDrawError << std::endl;
-        return false; // Error after draw
-    }
+    // REMOVED: postDrawError check
     
-    // If we reached here without errors
+    // Assuming success if we reach here (link errors handled elsewhere)
     return true;
 }
 

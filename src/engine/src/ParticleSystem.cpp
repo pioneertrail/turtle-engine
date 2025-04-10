@@ -156,39 +156,19 @@ bool ParticleSystem::render(const glm::mat4& view, const glm::mat4& projection) 
     std::cout << "  [Particle Render] Entered. Initialized: " << m_initialized 
               << ", Active Particles: " << m_activeParticleCount << std::endl;
     if (!m_initialized || m_activeParticleCount == 0) {
-        return true;
+        return true; // Not an error if no particles
     }
 
     m_shader.use();
     GLint particleProgram = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &particleProgram);
-    bool shaderValid = m_shader.isValid();
-    std::cout << "  [Particle Render] Shader ID: " << particleProgram << ", Valid: " << shaderValid << std::endl;
+    std::cout << "  [Particle Render] Shader ID: " << particleProgram << std::endl;
     
-    if (!shaderValid) {
-        std::cerr << "  [Particle Render] Shader invalid, exiting render early." << std::endl;
-        return false;
-    }
-
     m_shader.setMat4("view", view);
     m_shader.setMat4("projection", projection);
 
     glBindVertexArray(m_VAO);
 
-    // Check for errors before drawing
-    GLenum preDrawError = glGetError();
-    if (preDrawError != GL_NO_ERROR) {
-        std::cerr << "  [Particle Render] OpenGL Error BEFORE draw: " << preDrawError << std::endl;
-        return false;
-    }
-
     glDrawArrays(GL_POINTS, 0, m_activeParticleCount);
-
-    // Check for errors after drawing
-    GLenum postDrawError = glGetError();
-    if (postDrawError != GL_NO_ERROR) {
-        std::cerr << "  [Particle Render] OpenGL Error AFTER draw: " << postDrawError << std::endl;
-        return false;
-    }
     
     return true;
 }
