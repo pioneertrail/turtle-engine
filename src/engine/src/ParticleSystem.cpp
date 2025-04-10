@@ -103,7 +103,7 @@ void ParticleSystem::update(float deltaTime) {
     std::cout << "    [ParticleSystem Update] Received deltaTime: " << deltaTime << std::endl;
 
     m_particleBufferData.clear(); // Clear buffer for refill
-    size_t activeParticleCount = 0;
+    m_activeParticleCount = 0; // Reset member count for this frame
 
     for (size_t i = 0; i < m_maxParticles; ++i) {
         Particle& p = m_particles[i];
@@ -129,14 +129,14 @@ void ParticleSystem::update(float deltaTime) {
                 m_particleBufferData.push_back(p.color.g);
                 m_particleBufferData.push_back(p.color.b);
                 m_particleBufferData.push_back(p.color.a);
-                activeParticleCount++;
+                m_activeParticleCount++; // Increment member count
             }
         }
     }
     // Update the VBO if there are active particles
-    if (activeParticleCount > 0) {
+    if (m_activeParticleCount > 0) {
         // Log buffer state before updating VBO
-        std::cout << "    [ParticleSystem Update] Active particles found: " << activeParticleCount << ". Buffer size (floats): " << m_particleBufferData.size() << std::endl;
+        std::cout << "    [ParticleSystem Update] Active particles found: " << m_activeParticleCount << ". Buffer size (floats): " << m_particleBufferData.size() << std::endl;
         updateBuffers();
     } else {
         // Log if no active particles found
@@ -154,10 +154,10 @@ void ParticleSystem::updateBuffers() {
 
 void ParticleSystem::render(const glm::mat4& view, const glm::mat4& projection) {
     // Entry Log & State Check
-    std::cout << "  [Particle Render] Entered. Initialized: " << m_initialized << ", Buffer size (floats): " << m_particleBufferData.size() << std::endl;
+    std::cout << "  [Particle Render] Entered. Initialized: " << m_initialized << ", Active Particles: " << m_activeParticleCount << std::endl;
 
-    if (!m_initialized || m_particleBufferData.empty()) {
-        std::cout << "  [Particle Render] Exiting early (Not initialized or buffer empty/zero size)." << std::endl;
+    if (!m_initialized || m_activeParticleCount == 0) {
+        std::cout << "  [Particle Render] Exiting early (Not initialized or no active particles)." << std::endl;
         return;
     }
 
@@ -178,7 +178,7 @@ void ParticleSystem::render(const glm::mat4& view, const glm::mat4& projection) 
 
     glBindVertexArray(m_VAO);
     // Draw only the number of active particles currently in the buffer
-    glDrawArrays(GL_POINTS, 0, m_particleBufferData.size() / 7); // 7 floats per particle (vec3 pos + vec4 color)
+    glDrawArrays(GL_POINTS, 0, m_activeParticleCount); // Draw based on count from update
     glBindVertexArray(0);
 
     // Restore blend/depth state if changed

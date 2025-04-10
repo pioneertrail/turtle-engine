@@ -52,6 +52,7 @@ namespace TurtleEngine {
         std::vector<Particle> m_particles; // Pool of all particles
         std::vector<float> m_particleBufferData; // Data to upload to VBO (pos + color)
         size_t m_lastUsedParticle = 0; // Optimization for finding unused particles
+        size_t m_activeParticleCount = 0; // Count of particles active after last update
 
         // Rendering resources
         Shader m_shader;
