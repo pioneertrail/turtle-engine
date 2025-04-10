@@ -5,6 +5,9 @@
 #include <iostream>
 #include <chrono>
 #include <glm/gtc/matrix_transform.hpp>
+#include "csl/CSLSystem.hpp"
+#include "csl/GestureRecognizer.hpp"
+#include "combat/Combo.hpp"
 
 namespace TurtleEngine {
 
@@ -20,6 +23,28 @@ Engine::Engine() : m_window(nullptr), m_isRunning(false) {
     m_camera.yaw = -45.0f;
     m_camera.pitch = -45.0f;
     m_camera.distance = 20.0f;
+
+    m_cslSystem = std::make_unique<CSL::CSLSystem>();
+
+    // Define combos (can be loaded from config later)
+    ComboStep punch2 {"Punch2", std::chrono::milliseconds(400)}; // Example: Punch2 needs to follow within 400ms
+    ComboStep punch1 {"Punch1", std::chrono::milliseconds(500), {}, {punch2}};
+    m_definedCombos.push_back({"Basic_Punch_Combo", punch1});
+
+    ComboStep kick1 {"Kick1", std::chrono::milliseconds(600)};
+    m_definedCombos.push_back({"Basic_Kick", kick1});
+    
+    // Add CSL gesture names mapped to combo identifiers if needed
+    // Make sure moveIdentifiers used here match names from onGestureRecognized
+    ComboStep flammilSwipe {"Flammil", std::chrono::milliseconds(500)};
+    m_definedCombos.push_back({"Flammil_Start", flammilSwipe});
+    
+    ComboStep khargailCharge_Step2 {"Punch1", std::chrono::milliseconds(300)}; // Khargail -> Punch1 ?
+    ComboStep khargailCharge {"Khargail", std::chrono::milliseconds(600), {}, {khargailCharge_Step2}};
+    m_definedCombos.push_back({"Khargail_Combo", khargailCharge});
+
+    // Instantiate ComboManager with the defined combos
+    m_comboManager = std::make_unique<ComboManager>(m_definedCombos);
 }
 
 Engine::~Engine() {
@@ -62,6 +87,27 @@ bool Engine::initialize(const std::string& windowTitle, int width, int height) {
 
     // Create grid
     m_grid = std::make_unique<Grid>(20, 20, 1.0f);
+
+    // Initialize and start CSL System
+    if (!m_cslSystem || !m_cslSystem->initialize()) {
+        std::cerr << "Failed to initialize CSL System" << std::endl;
+        // Consider if this should be fatal - depends on game requirements
+        // return false; 
+    } else {
+        // Register gesture callback
+        m_cslSystem->registerGestureCallback(
+            [this](const CSL::GestureResult& result) {
+                this->onGestureRecognized(result);
+            }
+        );
+        // Optionally register plasma callback if needed separately
+        // m_cslSystem->addPlasmaCallback(...);
+
+        if (!m_cslSystem->start()) {
+             std::cerr << "Failed to start CSL System" << std::endl;
+             // return false;
+        }
+    }
 
     // Set up input callbacks
     glfwSetWindowUserPointer(m_window, this);
@@ -141,6 +187,42 @@ void Engine::updateCamera() {
     m_camera.position = glm::vec3(x, y, z);
 }
 
+void Engine::onGestureRecognized(const CSL::GestureResult& result) {
+    // Convert GestureType to string/identifier
+    std::string gestureName = "UNKNOWN"; 
+    switch (result.type) {
+        case CSL::GestureType::KHARGAIL: gestureName = "Khargail"; break;
+        case CSL::GestureType::FLAMMIL: gestureName = "Flammil"; break;
+        case CSL::GestureType::STASAI: gestureName = "Stasai"; break;
+        case CSL::GestureType::ANNIHLAT: gestureName = "Annihlat"; break;
+        case CSL::GestureType::NONE: gestureName = "None"; break;
+        default: break;
+    }
+
+    std::cout << "[Engine Callback] Gesture Recognized: " << gestureName 
+              << " | Confidence: " << result.confidence 
+              // Note: GestureResult struct has transitionLatency, but CSLSystem doesn't seem to populate it yet.
+              // << " | Latency: " << result.transitionLatency << " ms"
+              << std::endl;
+
+    // Process the move via ComboManager if a valid gesture name was found
+    if (m_comboManager && gestureName != "UNKNOWN" && gestureName != "None") {
+        // Add timing measurement here for latency check (Task 2.4)
+        auto start_time = std::chrono::high_resolution_clock::now();
+        
+        m_comboManager->ProcessMove(gestureName);
+        
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+        std::cout << "    ComboManager::ProcessMove took: " << duration.count() << " us" << std::endl;
+        
+        // TODO: Check if duration meets < 0.1s (100,000 us) requirement and log/assert if not.
+        if (duration.count() > 100000) {
+            std::cerr << "!!!! WARNING: Combo processing took longer than 100ms !!!!" << std::endl;
+        }
+    }
+}
+
 void Engine::run() {
     while (m_isRunning && !glfwWindowShouldClose(m_window)) {
         // Calculate frame time
@@ -150,6 +232,12 @@ void Engine::run() {
         m_performance.fps = static_cast<int>(1.0 / m_performance.frameTime);
 
         processInput();
+        
+        // Update CSL System
+        if (m_cslSystem) {
+            m_cslSystem->update();
+        }
+
         updateCamera();
 
         // Clear buffers
@@ -169,6 +257,11 @@ void Engine::run() {
 }
 
 void Engine::shutdown() {
+    // Stop CSL System first
+    if (m_cslSystem) {
+        m_cslSystem->stop();
+    }
+
     if (m_window) {
         glfwDestroyWindow(m_window);
         m_window = nullptr;

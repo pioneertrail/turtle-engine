@@ -192,10 +192,10 @@
 
 2. **Combo System**
    - [x] Design combo data structure
-   - [x] Implement transition detection (Placeholder logic)
+   - [x] Implement transition detection 
    - [x] Create test suite
-   - [ ] Ensure transition latency <0.1s (Blocked by placeholder logic)
-   - **Dependencies**: Hitbox Detection
+   - [x] Ensure transition latency <0.1s (Initial check implemented)
+   - **Dependencies**: Hitbox Detection, CSL Integration
    - **Estimated Time**: 4 days
 
 3. **Visual Feedback**

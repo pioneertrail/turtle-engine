@@ -2,10 +2,25 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include "Grid.hpp"
+#include "csl/CSLSystem.hpp"
+#include "csl/GestureRecognizer.hpp"
+#include "combat/Combo.hpp"
+// Forward declare CSLSystem to avoid full include here if possible
+// #include "csl/CSLSystem.hpp" 
+
+namespace TurtleEngine {
+    namespace CSL { class CSLSystem; } // Forward declaration
+    struct GestureResult; // Forward declaration for callback type
+    namespace Combat { // Assuming ComboManager is in Combat namespace based on file path
+        class ComboManager;
+        struct ComboSequence; // Needed for constructor/member type
+    }
+}
 
 namespace TurtleEngine {
 
@@ -32,9 +47,15 @@ private:
     void processInput();
     void updateCamera();
 
+    // Callback for CSL gesture results
+    void onGestureRecognized(const CSL::GestureResult& result);
+
     // Core components
     GLFWwindow* m_window;
     bool m_isRunning;
+    std::unique_ptr<CSL::CSLSystem> m_cslSystem;
+    std::unique_ptr<ComboManager> m_comboManager;
+    std::vector<ComboSequence> m_definedCombos;
     
     // Camera
     struct {
