@@ -10,7 +10,7 @@ CSLSystem::CSLSystem()
     , m_initialized(false)
     , m_cameraIndex(0)
     , m_cameraResolution(640, 480)
-    , m_lastGestureResult{GestureType::NONE, 0.0f, cv::Point2f(), std::vector<cv::Point2f>()}
+    , m_lastGestureResult()
     , m_plasmaDuration(0.1f)
 {
     m_gestureRecognizer = std::make_unique<GestureRecognizer>();
@@ -188,32 +188,40 @@ void CSLSystem::triggerGesture(GestureType type, std::chrono::high_resolution_cl
     // handle the absence of this data.
     GestureResult result;
     result.type = type;
+    // Explicitly set gesture name based on type for triggered gestures
+    switch (type) {
+        case GestureType::KHARGAIL: result.gestureName = "Khargail"; break;
+        case GestureType::FLAMMIL: result.gestureName = "Flammil"; break;
+        case GestureType::STASAI: result.gestureName = "Stasai"; break;
+        case GestureType::ANNIHLAT: result.gestureName = "Annihlat"; break;
+        default: result.gestureName = "UNKNOWN_TRIGGERED"; break;
+    }
     result.confidence = 1.0f; // Assume full confidence for direct triggers
     result.position = cv::Point2f(0, 0); 
     result.timestamp = std::chrono::high_resolution_clock::now(); 
     result.endTimestamp = result.timestamp; 
     result.transitionLatency = 0.0f; 
     result.triggerTimestamp = triggerTime; // Store the passed timestamp
+    result.debug_velocity = -1.0f; // Placeholder for triggered gestures
 
     // Add minimal trajectory & velocity data for testing particle spawning
     if (type == GestureType::FLAMMIL) {
-        // Refined 5-point diagonal sweep (top-left to bottom-right)
-        // Placeholder coordinates - adjust based on desired visual origin/scale
+        // Refined 5-point diagonal sweep from (100,100) to (200,200)
         float startX = 100.0f, startY = 100.0f;
-        float endX = 300.0f, endY = 300.0f;
+        float endX = 200.0f, endY = 200.0f;
         result.trajectory = {
-            {startX, startY},
-            {startX + (endX-startX)*0.25f, startY + (endY-startY)*0.25f},
-            {startX + (endX-startX)*0.50f, startY + (endY-startY)*0.50f},
-            {startX + (endX-startX)*0.75f, startY + (endY-startY)*0.75f},
-            {endX, endY}
+            {startX, startY},                                             // Point 0
+            {startX + (endX-startX)*0.25f, startY + (endY-startY)*0.25f}, // Point 1
+            {startX + (endX-startX)*0.50f, startY + (endY-startY)*0.50f}, // Point 2
+            {startX + (endX-startX)*0.75f, startY + (endY-startY)*0.75f}, // Point 3
+            {endX, endY}                                                  // Point 4
         };
-        // Provide adjusted velocities (still placeholders)
-        result.velocities = {0.2f, 0.4f, 0.6f, 0.8f, 1.0f}; 
+        // Velocities scaling from 0.2f to 1.0f
+        result.velocities = {0.2f, 0.4f, 0.6f, 0.8f, 1.0f};
     }
 
     std::cout << "CSLSystem: Triggering gesture type " << static_cast<int>(type) << std::endl;
-    invokeCallbacks(result);
+    this->invokeCallbacks(result);
 }
 
 void CSLSystem::invokeCallbacks(const GestureResult& result) {
