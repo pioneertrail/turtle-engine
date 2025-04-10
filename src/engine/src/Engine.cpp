@@ -159,15 +159,13 @@ bool Engine::initialize(const std::string& windowTitle, int width, int height) {
                 case GLFW_KEY_F: // Trigger Flammil
                     if (engine->m_cslSystem) {
                         std::cout << "[Input] F key pressed, triggering Flammil." << std::endl;
-                        // TODO: Pass keyPressTime to triggerGesture or store it for onGestureRecognized
-                        engine->m_cslSystem->triggerGesture(CSL::GestureType::FLAMMIL);
+                        engine->m_cslSystem->triggerGesture(CSL::GestureType::FLAMMIL, keyPressTime);
                     }
                     break;
                 case GLFW_KEY_C: // Trigger Khargail
                     if (engine->m_cslSystem) {
                         std::cout << "[Input] C key pressed, triggering Khargail." << std::endl;
-                        // TODO: Pass keyPressTime to triggerGesture or store it for onGestureRecognized
-                        engine->m_cslSystem->triggerGesture(CSL::GestureType::KHARGAIL);
+                        engine->m_cslSystem->triggerGesture(CSL::GestureType::KHARGAIL, keyPressTime);
                     }
                     break;
             }
@@ -247,22 +245,30 @@ void Engine::onGestureRecognized(const CSL::GestureResult& result) {
 
     std::cout << "[Engine Callback] Gesture Recognized: " << gestureName 
               << " | Confidence: " << result.confidence 
-              // Note: GestureResult struct has transitionLatency, but CSLSystem doesn't seem to populate it yet.
-              // << " | Latency: " << result.transitionLatency << " ms"
               << std::endl;
+
+    // --- Latency Check for Triggered Gestures --- 
+    if (result.triggerTimestamp.has_value()) {
+        auto callbackTime = std::chrono::high_resolution_clock::now();
+        auto totalLatency = std::chrono::duration_cast<std::chrono::microseconds>(callbackTime - result.triggerTimestamp.value());
+        std::cout << "    QuickSign Latency (Key Press -> Callback): " << totalLatency.count() << " us" << std::endl;
+        // TODO: Log this to gesture_recognition_results.txt as required by task
+        // TODO: Check against <0.5s requirement from task list
+        if (totalLatency.count() > 500000) { // 0.5 seconds
+            std::cerr << "!!!! WARNING: QuickSign latency > 500ms !!!!" << std::endl;
+        }
+    }
+    // --- End Latency Check ---
 
     // Process the move via ComboManager if a valid gesture name was found
     if (m_comboManager && gestureName != "UNKNOWN" && gestureName != "None") {
-        // Add timing measurement here for latency check (Task 2.4)
+        // Timing for ComboManager processing itself
         auto start_time = std::chrono::high_resolution_clock::now();
-        
         m_comboManager->ProcessMove(gestureName);
-        
         auto end_time = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
         std::cout << "    ComboManager::ProcessMove took: " << duration.count() << " us" << std::endl;
         
-        // TODO: Check if duration meets < 0.1s (100,000 us) requirement and log/assert if not.
         if (duration.count() > 100000) {
             std::cerr << "!!!! WARNING: Combo processing took longer than 100ms !!!!" << std::endl;
         }

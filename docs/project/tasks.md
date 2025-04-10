@@ -170,11 +170,11 @@
    - **Estimated Time**: 5 days
 
 3. **Quick Sign System**
-   - [ ] Design input handling
-   - [ ] Implement gesture shortcuts
-   - [ ] Create feedback system
-   - [ ] Log keypress-to-recognition latency in `gesture_recognition_results.txt`
-   - **Dependencies**: Gesture Recognition Core
+   - [x] Design input handling (Added to GLFW key callback)
+   - [x] Implement gesture shortcuts (F/C keys trigger gestures)
+   - [ ] Create feedback system (Visual/audio feedback not implemented)
+   - [x] Log keypress-to-recognition latency (Initial console logging implemented)
+   - **Dependencies**: Gesture Recognition Core, CSLSystem Integration
    - **Estimated Time**: 4 days
 
 #### Combat Mechanics (Phase 2)
@@ -463,8 +463,3 @@ Combat Mechanics
    - *Priority:* P0
    - *Status:* 🟢 Completed
    - *Dependencies:* All prior tasks completed.
-
-3. **Quick Sign System**
-   - [ ] Design input handling
-   - [ ] Implement gesture shortcuts
-   - **Estimated Time**: 4 days

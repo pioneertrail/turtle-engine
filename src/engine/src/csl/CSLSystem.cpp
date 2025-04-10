@@ -179,8 +179,8 @@ void CSLSystem::processFrame(const cv::Mat& frame) {
     }
 }
 
-// New method to trigger gesture from code
-void CSLSystem::triggerGesture(GestureType type) {
+// Updated method to trigger gesture from code, accepting trigger time
+void CSLSystem::triggerGesture(GestureType type, std::chrono::high_resolution_clock::time_point triggerTime) {
     if (type == GestureType::NONE) return;
 
     // Construct a simulated high-confidence result
@@ -188,20 +188,12 @@ void CSLSystem::triggerGesture(GestureType type) {
     result.type = type;
     result.confidence = 1.0f; // Simulate high confidence
     result.position = cv::Point2f(0, 0); // Dummy position
-    result.timestamp = std::chrono::high_resolution_clock::now();
-    result.endTimestamp = result.timestamp; // Instantaneous for triggered gesture
-    result.transitionLatency = 0.0f; // No real transition
-    // result.trajectory.clear(); // Empty trajectory
-    // result.velocities.clear(); // Empty velocities
-
-    // Store as last result (optional, might confuse real recognition)
-    // {
-    //     std::lock_guard<std::mutex> lock(m_resultMutex);
-    //     m_lastGestureResult = result;
-    // }
+    result.timestamp = std::chrono::high_resolution_clock::now(); // Time callback is invoked
+    result.endTimestamp = result.timestamp; // Instantaneous
+    result.transitionLatency = 0.0f; 
+    result.triggerTimestamp = triggerTime; // Store the original trigger time
 
     std::cout << "CSLSystem: Triggering gesture type " << static_cast<int>(type) << std::endl;
-    // Invoke callbacks directly
     invokeCallbacks(result);
 }
 
