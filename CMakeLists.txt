@@ -45,6 +45,7 @@ add_library(TurtleEngineCore
     src/engine/src/Grid.cpp
     src/engine/src/csl/GestureRecognizer.cpp
     src/engine/src/csl/CSLSystem.cpp
+    src/engine/src/combat/Hitbox.cpp
 )
 
 # Performance optimization flags for gesture recognition and plasma effects
@@ -108,6 +109,27 @@ if(BUILD_TESTS)
     add_executable(CameraTest src/tests/CameraTest.cpp)
     target_link_libraries(CameraTest PRIVATE ${OpenCV_LIBS}) # Use ${OpenCV_LIBS}
     # target_include_directories(CameraTest PRIVATE ${OpenCV_INCLUDE_DIRS}) # No longer needed
+
+    # Add Hitbox test
+    add_executable(HitboxTest src/tests/combat/HitboxTest.cpp)
+    target_link_libraries(HitboxTest PRIVATE TurtleEngineCore glm::glm)
+    target_include_directories(HitboxTest PRIVATE
+        ${CMAKE_SOURCE_DIR}/src/engine/include
+        ${CMAKE_SOURCE_DIR}/src/tests
+    )
+
+    # Add DLL copy commands for HitboxTest if needed (assuming it doesnt need OpenCV DLLs here)
+    # if(OpenCV_BIN_DIR AND EXISTS "${OpenCV_BIN_DIR}")
+    #     file(GLOB OpenCV_DLLS "${OpenCV_BIN_DIR}/*.dll")
+    #     foreach(DLL ${OpenCV_DLLS})
+    #         if (TARGET HitboxTest)
+    #             add_custom_command(TARGET HitboxTest POST_BUILD
+    #                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    #                 ${DLL}
+    #                 $<TARGET_FILE_DIR:HitboxTest>)
+    #         endif()
+    #     endforeach()
+    # endif()
 endif()
 
 # After all targets are defined, add the DLL copy commands
