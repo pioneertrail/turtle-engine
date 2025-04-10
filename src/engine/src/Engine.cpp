@@ -367,6 +367,7 @@ void Engine::run() {
 
         updateCamera(); // Assuming this uses member variables, not deltaTime directly
 
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f); // Dark grey background (Restored)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Calculate view and projection matrices
