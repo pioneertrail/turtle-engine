@@ -272,6 +272,10 @@ void Engine::onGestureRecognized(const CSL::GestureResult& result) {
     }
 
     // --- Spawn FLAMMIL Ember Particles --- 
+    // Note: result.trajectory and result.velocities may be empty if the gesture was
+    // directly triggered (e.g., via keybind in CSLSystem::triggerGesture) instead of
+    // recognized from tracked points. The logic here needs to account for this.
+    // Currently, this block uses a hardcoded test path for FLAMMIL regardless.
     if (result.type == CSL::GestureType::FLAMMIL && m_particleSystem) {
         std::cout << "    Forcing FLAMMIL ember test..." << std::endl;
         std::vector<cv::Point2f> testTrajectory = {{100, 100}, {150, 150}, {200, 200}};

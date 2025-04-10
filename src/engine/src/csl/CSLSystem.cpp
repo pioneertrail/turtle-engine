@@ -179,19 +179,24 @@ void CSLSystem::processFrame(const cv::Mat& frame) {
     }
 }
 
-// Updated: Removed time_point parameter to match header
-void CSLSystem::triggerGesture(GestureType type) { 
-    m_lastGestureResult.type = type;
-    m_lastGestureResult.confidence = 1.0f; // Assume full confidence for direct trigger
-    m_lastGestureResult.position = cv::Point2f(-1, -1); // Indicate invalid position for triggered gesture
-    m_lastGestureResult.velocities.clear(); // No velocity for triggered gesture
-    m_lastGestureResult.transitionLatency = -1.0f; // Indicate no latency measured
-    
-    // Indicate it was triggered externally (e.g., by keybind)
-    std::cout << "[CSLSystem] Triggered gesture: " << static_cast<int>(type) << std::endl;
+void CSLSystem::triggerGesture(GestureType type, std::chrono::high_resolution_clock::time_point triggerTime) {
+    if (type == GestureType::NONE) return;
 
-    // Invoke callbacks immediately for triggered gestures
-    invokeCallbacks(m_lastGestureResult);
+    // Note: This function creates a minimal GestureResult for directly triggered events
+    // (e.g., keybinds). It intentionally does *not* populate trajectory or velocity data,
+    // as there is no simulated movement path. Callbacks receiving this result must
+    // handle the absence of this data.
+    GestureResult result;
+    result.type = type;
+    result.confidence = 1.0f; // Assume full confidence for direct triggers
+    result.position = cv::Point2f(0, 0); 
+    result.timestamp = std::chrono::high_resolution_clock::now(); 
+    result.endTimestamp = result.timestamp; 
+    result.transitionLatency = 0.0f; 
+    result.triggerTimestamp = triggerTime; // Store the passed timestamp
+
+    std::cout << "CSLSystem: Triggering gesture type " << static_cast<int>(type) << std::endl;
+    invokeCallbacks(result);
 }
 
 void CSLSystem::invokeCallbacks(const GestureResult& result) {

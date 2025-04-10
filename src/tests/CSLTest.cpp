@@ -226,32 +226,32 @@ bool runLogExtractTest(TurtleEngine::CSL::GestureRecognizer& recognizer, const s
     return overallSuccess;
 }
 
-// Function to generate points for a circle
+// Helper to generate points for a circle
 std::vector<cv::Point2f> generateCirclePoints(const cv::Point2f& center, float radius, int numPoints) {
     std::vector<cv::Point2f> points(numPoints);
-    // Use M_PI defined above or from cmath
-    float angleInc = 2.0f * static_cast<float>(M_PI) / (numPoints > 1 ? (numPoints - 1) : 1);
     for (int i = 0; i < numPoints; ++i) {
-        float angle = i * angleInc;
+        float angle = 2.0f * CV_PI * i / numPoints;
         points[i] = cv::Point2f(center.x + radius * std::cos(angle),
                                 center.y + radius * std::sin(angle));
     }
     return points;
 }
 
-// Function to stress test latency with many points for Stasai (0.15s target)
-void runLatencyStressTest(TurtleEngine::CSL::GestureRecognizer& recognizer, int iterations = 20) {
-    std::cout << "\n--- Running Test 9: Latency Stress Test ---" << std::endl;
-    std::cout << "  Gesture: STASAI (Circle), Points: 1000, Duration: 0.15s Target, Iterations: " << iterations << std::endl;
+// Test 9: Latency Stress Test for STASAI
+void Test9_LatencyStress(TurtleEngine::CSL::GestureRecognizer& recognizer, int iterations = 1000) {
+    std::cout << "--- Running Test 9: Latency Stress Test (STASAI x" << iterations << ") ---" << std::endl;
 
-    cv::Point2f center(640, 360); // Example center from other tests
-    float radius = 50.0f;        // Standard Stasai radius
-    int numPoints = 1000;
+    const cv::Point2f center(640.0f, 360.0f);
+    const float radius = 50.0f; // Standard radius
+    // Simulate ~0.15s duration. At 60fps, this is ~9 frames. Use 15 points for a smoother circle.
+    const int numPoints = 15;
+    const std::string testCaseBaseId = "Test9_Stasai";
 
     auto points = generateCirclePoints(center, radius, numPoints);
 
     if (points.empty()) {
-        std::cerr << "  ERROR: Failed to generate points for stress test." << std::endl;
+        std::cerr << "  ERROR: Failed to generate points for Test 9." << std::endl;
+        std::cout << "--- Test 9 Aborted ---" << std::endl;
         return;
     }
 
@@ -261,11 +261,14 @@ void runLatencyStressTest(TurtleEngine::CSL::GestureRecognizer& recognizer, int 
     double sumDurationMs = 0.0;
     bool firstRun = true;
 
-    std::cout << "  Running iterations:" << std::flush;
+    std::cout << "  Running iterations: " << std::flush;
     for (int i = 0; i < iterations; ++i) {
-        TurtleEngine::CSL::GestureResult result = recognizer.processSimulatedPoints(points, "Test9_Run" + std::to_string(i));
-        auto durationChrono = result.endTimestamp - result.timestamp;
-        double currentDurationMs = std::chrono::duration<double, std::milli>(durationChrono).count();
+        std::string currentTestCaseId = testCaseBaseId + "_" + std::to_string(i + 1);
+        // Note: processSimulatedPoints logs internally, including duration.
+        TurtleEngine::CSL::GestureResult result = recognizer.processSimulatedPoints(points, currentTestCaseId);
+
+        // We use the transitionLatency field to store processing duration in simulation
+        double currentDurationMs = result.transitionLatency;
 
         durationsMs.push_back(currentDurationMs);
         sumDurationMs += currentDurationMs;
@@ -273,22 +276,30 @@ void runLatencyStressTest(TurtleEngine::CSL::GestureRecognizer& recognizer, int 
             maxDurationMs = currentDurationMs;
             firstRun = false;
         }
-        std::cout << "." << std::flush;
+        if ((i + 1) % 100 == 0) { // Print progress marker every 100 iterations
+             std::cout << "." << std::flush;
+        }
     }
     std::cout << " Done." << std::endl;
 
     double avgDurationMs = (iterations > 0) ? (sumDurationMs / iterations) : 0.0;
 
     std::cout << std::fixed << std::setprecision(3);
-    std::cout << "  Max Processing Duration: " << maxDurationMs << " ms" << std::endl;
-    std::cout << "  Avg Processing Duration: " << avgDurationMs << " ms" << std::endl;
+    std::cout << "  Max STASAI Processing Duration (1000 runs): " << maxDurationMs << " ms" << std::endl;
+    std::cout << "  Avg STASAI Processing Duration (1000 runs): " << avgDurationMs << " ms" << std::endl;
 
+    // Check against the <16ms target
     if (maxDurationMs > 16.0) {
         std::cout << "  WARNING: Maximum duration exceeds Phase 2 target (<16ms)!" << std::endl;
     } else {
-        std::cout << "  Result: Maximum duration within Phase 2 target." << std::endl;
+        std::cout << "  Result: Maximum duration IS within the Phase 2 target." << std::endl;
     }
-    std::cout << "--- Test 9 Complete ---" << std::endl;
+     if (avgDurationMs > 16.0) {
+        std::cout << "  WARNING: Average duration exceeds Phase 2 target (<16ms)!" << std::endl;
+    } else {
+        std::cout << "  Result: Average duration IS within the Phase 2 target." << std::endl;
+    }
+    std::cout << "--- Test 9 Complete ---" << std::endl << std::endl;
 }
 
 int main() {
@@ -314,8 +325,8 @@ int main() {
     // runHighVelocityTest(recognizer, "Test_HighVel");
     runLogExtractTest(recognizer, "Test8_LogExtract"); // Keep Test 8 for comparison
 
-    // --- Add Call to New Latency Stress Test --- 
-    runLatencyStressTest(recognizer, 20); // Run 20 iterations
+    // --- Add Call to New Latency Stress Test ---
+    Test9_LatencyStress(recognizer); // Run Test 9 with default 1000 iterations
 
     std::cout << "\nAll tests completed." << std::endl;
 
