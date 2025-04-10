@@ -369,6 +369,7 @@ void Engine::run() {
 
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f); // Dark grey background (Restored)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        std::cout << "Cleared to dark grey" << std::endl; // Debug log for clear
 
         // Calculate view and projection matrices
         glm::mat4 view = glm::lookAt(m_camera.position, m_camera.target, m_camera.up);
