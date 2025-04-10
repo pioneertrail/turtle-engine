@@ -145,7 +145,13 @@ void ParticleSystem::updateBuffers() {
 }
 
 void ParticleSystem::render(const glm::mat4& view, const glm::mat4& projection) {
-    if (!m_initialized || m_particleBufferData.empty()) return;
+    // Entry Log & State Check
+    std::cout << "  [Particle Render] Entered. Initialized: " << m_initialized << ", Buffer Empty: " << m_particleBufferData.empty() << std::endl;
+
+    if (!m_initialized || m_particleBufferData.empty()) {
+        std::cout << "  [Particle Render] Exiting early (Not initialized or buffer empty)." << std::endl;
+        return;
+    }
 
     // Enable additive blending for sparks (optional)
     // glEnable(GL_BLEND);

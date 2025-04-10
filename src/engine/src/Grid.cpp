@@ -93,6 +93,9 @@ void Grid::createBuffers() {
 }
 
 void Grid::render(const glm::mat4& view, const glm::mat4& projection) {
+    // Entry Log
+    std::cout << "  [Grid Render] Entered." << std::endl;
+
     m_shader.use();
     // Debug Log
     GLint gridProgram = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &gridProgram);
