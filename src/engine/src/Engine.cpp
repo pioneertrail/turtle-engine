@@ -287,7 +287,7 @@ void Engine::onGestureRecognized(const CSL::GestureResult& result) {
         const float baseLifetime = 0.4f;
         const float lifetimeVariance = 0.2f;
         const float baseSpeed = 0.1f; // Low speed for embers
-        const int burstCount = 10; // Boosted to 10 particles per point
+        const int burstCount = 50; // Was 10, now 50 for visual impact
 
         for (size_t i = 0; i < result.trajectory.size(); ++i) {
             if (i >= result.velocities.size()) break; 
@@ -308,8 +308,19 @@ void Engine::onGestureRecognized(const CSL::GestureResult& result) {
                 m_particleSystem->spawnBurst(burstCount, spawnPos, baseSpeed, lifetime, emberColor);
             }
         }
-        // Dummy hit feedback
-        glm::vec3 hitPos = glm::vec3(0.0f, 0.0f, -1.0f);  // Center screen
+        // Update hitbox feedback
+        glm::vec3 hitPos = glm::vec3(0.0f, 0.0f, -1.0f); // Default center screen
+        if (!result.trajectory.empty()) {
+            // Need window dimensions again for NDC conversion
+            int windowWidth, windowHeight;
+            glfwGetFramebufferSize(m_window, &windowWidth, &windowHeight);
+            windowWidth = std::max(1, windowWidth); // Avoid division by zero
+            windowHeight = std::max(1, windowHeight);
+
+            float ndcX = (result.trajectory.back().x / static_cast<float>(windowWidth)) * 2.0f - 1.0f;
+            float ndcY = 1.0f - (result.trajectory.back().y / static_cast<float>(windowHeight)) * 2.0f;
+            hitPos = glm::vec3(ndcX * 5.0f, ndcY * 5.0f, -1.0f); // Use trajectory end point, scaled like embers
+        }
         glm::vec4 hitColor = glm::vec4(1.0f, 0.0f, 0.0f, 0.8f);  // Red sparks
         m_particleSystem->spawnBurst(15, hitPos, 0.3f, 0.5f, hitColor);  // Hit burst
     }
