@@ -3,6 +3,7 @@
 #include <glm/gtc/type_ptr.hpp> // For value_ptr
 #include <iostream> // For errors
 #include <algorithm> // For std::min
+#include <GLFW/glfw3.h> // For glfwGetTime
 
 namespace TurtleEngine {
 
@@ -170,10 +171,15 @@ void ParticleSystem::updateBuffers() {
 }
 
 void ParticleSystem::render(const glm::mat4& projection, const glm::mat4& view) {
-    // logToFile(std::string("[Particle Render] Entered. Initialized: ") + // Removed entry log
-    //           std::to_string(m_isInitialized) + ", Active Particles: " + std::to_string(m_activeParticleCount));
-
     if (!m_initialized || m_particleBufferData.empty()) return;
+
+    m_shader.use();
+    m_shader.setMat4("projection", projection);
+    m_shader.setMat4("view", view);
+    
+    // Set time uniform for pulsing effect
+    float time = static_cast<float>(glfwGetTime());
+    m_shader.setFloat("time", time);
 
     // Enable additive blending for sparks (optional)
     // glEnable(GL_BLEND);
@@ -181,9 +187,6 @@ void ParticleSystem::render(const glm::mat4& projection, const glm::mat4& view) 
     // Disable depth writing so particles dont obscure each other incorrectly
     // glDepthMask(GL_FALSE); 
 
-    m_shader.use();
-    m_shader.setMat4("view", view);
-    m_shader.setMat4("projection", projection);
     m_shader.setMat4("model", glm::mat4(1.0f)); // Use identity model matrix for world-space particles
 
     glBindVertexArray(m_VAO);
