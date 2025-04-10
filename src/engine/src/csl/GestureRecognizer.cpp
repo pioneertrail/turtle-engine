@@ -10,6 +10,14 @@
 #include <fstream>
 #include <filesystem>
 #include <map>
+#include <numeric> // For std::accumulate if needed later
+
+// Conditional cout macro
+#ifdef ENABLE_GESTURE_DEBUG_LOGGING
+#define GESTURE_DEBUG_LOG(x) std::cout << x << std::endl
+#else
+#define GESTURE_DEBUG_LOG(x) 
+#endif
 
 // Define initial map contents (if needed, or initialize empty)
 // static const std::map<TurtleEngine::CSL::GestureType, float> initialThresholds = { ... };
@@ -23,23 +31,23 @@ GestureRecognizer::GestureRecognizer()
     , m_averageTransitionLatency(0.0f)
     , m_initialized(false)
     // Initialize maps in initializer list
-    , m_gestureThresholds({{GestureType::KHARGAIL, 0.78f}, {GestureType::FLAMMIL, 0.75f}, {GestureType::STASAI, 0.80f}, {GestureType::ANNIHLAT, 0.78f}})
+    , m_gestureThresholds({{GestureType::KHARGAIL, 0.78f}, {GestureType::FLAMMIL, 0.74f}, {GestureType::STASAI, 0.80f}, {GestureType::ANNIHLAT, 0.75f}})
     , m_gestureAttempts({{GestureType::KHARGAIL, 0}, {GestureType::FLAMMIL, 0}, {GestureType::STASAI, 0}, {GestureType::ANNIHLAT, 0}, {GestureType::NONE, 0}, {GestureType::TBD, 0}})
     , m_gestureSuccesses({{GestureType::KHARGAIL, 0}, {GestureType::FLAMMIL, 0}, {GestureType::STASAI, 0}, {GestureType::ANNIHLAT, 0}, {GestureType::NONE, 0}, {GestureType::TBD, 0}})
 {
-    std::cout << "GestureRecognizer Constructor: Start" << std::endl;
+    GESTURE_DEBUG_LOG("GestureRecognizer Constructor: Start");
     m_previousPoints.reserve(30);
-    std::cout << "GestureRecognizer Constructor: Reserved previousPoints" << std::endl;
+    GESTURE_DEBUG_LOG("GestureRecognizer Constructor: Reserved previousPoints");
     auto now = std::chrono::high_resolution_clock::now();
     m_lastGesture = {GestureType::NONE, 0.0f, cv::Point2f(), {}, {}, now, now, 0.0f};
-    std::cout << "GestureRecognizer Constructor: Initialized lastGesture" << std::endl;
+    GESTURE_DEBUG_LOG("GestureRecognizer Constructor: Initialized lastGesture");
     m_lastTransition = {GestureType::NONE, GestureType::NONE, 0.0f, 0.0f};
-    std::cout << "GestureRecognizer Constructor: Initialized lastTransition" << std::endl;
+    GESTURE_DEBUG_LOG("GestureRecognizer Constructor: Initialized lastTransition");
     
     // Map initialization moved to initializer list above
-    std::cout << "GestureRecognizer Constructor: Maps initialized via list" << std::endl;
+    GESTURE_DEBUG_LOG("GestureRecognizer Constructor: Maps initialized via list");
 
-    std::cout << "GestureRecognizer Constructor: End" << std::endl;
+    GESTURE_DEBUG_LOG("GestureRecognizer Constructor: End");
 }
 
 GestureRecognizer::~GestureRecognizer() {
@@ -53,30 +61,28 @@ bool GestureRecognizer::initialize() {
         return true;
     }
     
-    // Create logs directory if it doesn't exist
-    std::cout << "Initialize: Checking/Creating logs directory..." << std::endl;
+    GESTURE_DEBUG_LOG("Initialize: Checking/Creating logs directory...");
     std::filesystem::create_directories("logs");
-    std::cout << "Initialize: Logs directory created or exists." << std::endl;
+    GESTURE_DEBUG_LOG("Initialize: Logs directory created or exists.");
     
-    // Open log file
-    std::cout << "Initialize: Opening log file logs/gesture_debug.log..." << std::endl;
+    GESTURE_DEBUG_LOG("Initialize: Opening log file logs/gesture_debug.log...");
     m_logFile.open("logs/gesture_debug.log", std::ios::app);
     if (!m_logFile.is_open()) {
         std::cerr << "Initialize: ERROR - Failed to open gesture debug log file!" << std::endl;
         return false;
     }
-    std::cout << "Initialize: Log file opened successfully." << std::endl;
+    GESTURE_DEBUG_LOG("Initialize: Log file opened successfully.");
     
     m_initialized = true;
     return true;
 }
 
 GestureResult GestureRecognizer::processFrame(const cv::Mat& frame) {
-    auto startTime = std::chrono::high_resolution_clock::now();
-    
+    auto start = std::chrono::high_resolution_clock::now(); // Profiling start
+
     if (!m_initialized || frame.empty()) {
         return {GestureType::NONE, 0.0f, cv::Point2f(), {}, {}, 
-                startTime, startTime, 0.0f};
+                start, start, 0.0f};
     }
 
     // Process frame and detect gestures (Placeholder - needs real point tracking)
@@ -90,7 +96,7 @@ GestureResult GestureRecognizer::processFrame(const cv::Mat& frame) {
         pt.y = std::max(0.0f, std::min(screenHeight - 1, pt.y));
     }
     GestureResult result = {GestureType::NONE, 0.0f, cv::Point2f(), currentPoints, {}, 
-                           startTime, startTime, 0.0f};
+                           start, start, 0.0f};
     
     // Try each gesture type with gesture-specific thresholds
     auto khargailResult = recognizeKhargail(m_previousPoints);
@@ -147,46 +153,53 @@ GestureResult GestureRecognizer::processFrame(const cv::Mat& frame) {
         result.type = GestureType::NONE;
     }
 
-    auto endTime = std::chrono::high_resolution_clock::now();
-    result.endTimestamp = endTime;
+    auto end = std::chrono::high_resolution_clock::now(); // Profiling end
+    std::chrono::duration<double, std::milli> duration = end - start;
+    std::cout << "[Profiler] processFrame Duration: " << duration.count() << "ms" << std::endl;
 
-    // Calculate and Normalize Velocities (Placeholder)
+    // Optimize Velocity Calculation & Smoothing & Normalization (Placeholder in processFrame)
     result.velocities.clear();
     if (result.trajectory.size() > 1) {
-        std::vector<float> rawVelocities(result.trajectory.size() - 1);
-        const float timeStep = 1.0f / 60.0f; // Crude assumption
+        size_t num_segments = result.trajectory.size() - 1;
+        std::vector<float> rawVelocities(num_segments);
+        const float timeStepSq = (1.0f / 60.0f) * (1.0f / 60.0f);
         float maxMagnitudeSq = 0.0f;
 
-        for (size_t i = 0; i < result.trajectory.size() - 1; ++i) {
-            cv::Point2f p1 = result.trajectory[i];
-            cv::Point2f p2 = result.trajectory[i+1];
-            float distSq = (p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y);
-            float velocitySq = distSq / (timeStep * timeStep);
-            rawVelocities[i] = std::sqrt(velocitySq); // Store raw magnitude
+        // Calculate raw velocities (squared magnitude)
+        for (size_t i = 0; i < num_segments; ++i) {
+            float dx = result.trajectory[i+1].x - result.trajectory[i].x;
+            float dy = result.trajectory[i+1].y - result.trajectory[i].y;
+            float distSq = dx * dx + dy * dy;
+            float velocitySq = distSq / timeStepSq;
+            rawVelocities[i] = velocitySq;
             maxMagnitudeSq = std::max(maxMagnitudeSq, velocitySq);
         }
         
-        // Apply EMA Smoothing to raw velocities
-        const float alpha = 0.2f; // Smoothing factor (adjust as needed)
-        std::vector<float> smoothedVelocities = rawVelocities;
-        for(size_t i = 1; i < smoothedVelocities.size(); ++i) {
-            smoothedVelocities[i] = alpha * rawVelocities[i] + (1.0f - alpha) * smoothedVelocities[i-1];
+        // Apply EMA Smoothing (on squared velocities, then sqrt)
+        const float alpha = 0.2f;
+        std::vector<float> smoothedVelocitiesSq = rawVelocities;
+        if (num_segments > 1) {
+            for(size_t i = 1; i < num_segments; ++i) {
+                smoothedVelocitiesSq[i] = alpha * rawVelocities[i] + (1.0f - alpha) * smoothedVelocitiesSq[i-1];
+            }
         }
         
-        // Normalize the SMOOTHED velocities
-        result.velocities.resize(smoothedVelocities.size());
-        float maxSmoothedMagnitude = 0.0f;
-        for(const auto& v : smoothedVelocities) {
-             maxSmoothedMagnitude = std::max(maxSmoothedMagnitude, v);
+        // Normalize smoothed velocities (sqrt at the end)
+        result.velocities.resize(num_segments);
+        float maxSmoothedMagnitude = std::sqrt(smoothedVelocitiesSq.back()); // Approx max after EMA
+        // Recalculate actual max from smoothed values
+        maxSmoothedMagnitude = 0.0f;
+        for(const auto& v_sq : smoothedVelocitiesSq) {
+             maxSmoothedMagnitude = std::max(maxSmoothedMagnitude, std::sqrt(v_sq));
         }
 
         if (maxSmoothedMagnitude > 1e-6) { 
-            std::cout << "Normalizing smoothed velocities (max smoothed magnitude: " << maxSmoothedMagnitude << " px/s)" << std::endl;
-            for (size_t i = 0; i < smoothedVelocities.size(); ++i) {
-                result.velocities[i] = smoothedVelocities[i] / maxSmoothedMagnitude; // Normalize smoothed
+            GESTURE_DEBUG_LOG("Normalizing smoothed velocities (max smoothed magnitude: " << maxSmoothedMagnitude << " px/s)");
+            for (size_t i = 0; i < num_segments; ++i) {
+                result.velocities[i] = std::sqrt(smoothedVelocitiesSq[i]) / maxSmoothedMagnitude;
             }
         } else {
-             std::cout << "Smoothed velocities not normalized (max magnitude was zero)." << std::endl;
+             GESTURE_DEBUG_LOG("Smoothed velocities not normalized (max magnitude was zero).");
              std::fill(result.velocities.begin(), result.velocities.end(), 0.0f);
         }
     }
@@ -199,8 +212,7 @@ GestureResult GestureRecognizer::processFrame(const cv::Mat& frame) {
 }
 
 GestureResult GestureRecognizer::processSimulatedPoints(const std::vector<cv::Point2f>& points) {
-    std::cout << "Entering processSimulatedPoints, points size: " << points.size() << std::endl;
-    auto startTime = std::chrono::high_resolution_clock::now();
+    auto start = std::chrono::high_resolution_clock::now(); // Profiling start
 
     if (!m_initialized || points.empty()) {
         std::cout << "Not initialized or empty points, returning NONE" << std::endl;
@@ -222,8 +234,8 @@ GestureResult GestureRecognizer::processSimulatedPoints(const std::vector<cv::Po
 
     // Correct initial result initializer list with std::vector<float> for velocities
     GestureResult result = {GestureType::NONE, 0.0f, cv::Point2f(), processedPoints, {}, 
-                           startTime, startTime, 0.0f};
-    std::cout << "Starting gesture recognition" << std::endl;
+                           start, start, 0.0f};
+    GESTURE_DEBUG_LOG("Starting gesture recognition");
 
     // --- REVISED RECOGNITION LOGIC --- 
     GestureResult bestResult = result;
@@ -259,47 +271,52 @@ GestureResult GestureRecognizer::processSimulatedPoints(const std::vector<cv::Po
     // Assign the best result found
     result = bestResult; 
 
-    std::cout << "Finished recognition, best result type: " << static_cast<int>(result.type) << " with confidence: " << result.confidence << std::endl;
+    GESTURE_DEBUG_LOG("Finished recognition, best result type: " << static_cast<int>(result.type) << " with confidence: " << result.confidence);
 
-    // Calculate, Smooth, and Normalize Velocities (Simulation)
+    // Optimize Velocity Calculation & Smoothing & Normalization (Simulation)
     result.velocities.clear();
     if (processedPoints.size() > 1) {
-        std::vector<float> rawVelocities(processedPoints.size() - 1);
-        const float timeStep = 1.0f / 60.0f; // Assume 60 FPS simulation
-        float maxMagnitudeSq = 0.0f; 
+        size_t num_segments = processedPoints.size() - 1;
+        std::vector<float> rawVelocities(num_segments);
+        const float timeStepSq = (1.0f / 60.0f) * (1.0f / 60.0f);
+        float maxMagnitudeSq = 0.0f;
 
-        for (size_t i = 0; i < processedPoints.size() - 1; ++i) {
-            cv::Point2f p1 = processedPoints[i];
-            cv::Point2f p2 = processedPoints[i+1];
-            float distSq = (p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y);
-            float velocitySq = distSq / (timeStep * timeStep);
-            rawVelocities[i] = std::sqrt(velocitySq); 
+        // Calculate raw velocities (squared magnitude)
+        for (size_t i = 0; i < num_segments; ++i) {
+            float dx = processedPoints[i+1].x - processedPoints[i].x;
+            float dy = processedPoints[i+1].y - processedPoints[i].y;
+            float distSq = dx * dx + dy * dy;
+            float velocitySq = distSq / timeStepSq;
+            rawVelocities[i] = velocitySq; // Store squared velocity
             maxMagnitudeSq = std::max(maxMagnitudeSq, velocitySq);
         }
 
-        // Apply EMA Smoothing to raw velocities
-        const float alpha = 0.2f; // Smoothing factor
-        std::vector<float> smoothedVelocities = rawVelocities;
-        if (!smoothedVelocities.empty()) {
-             for(size_t i = 1; i < smoothedVelocities.size(); ++i) {
-                 smoothedVelocities[i] = alpha * rawVelocities[i] + (1.0f - alpha) * smoothedVelocities[i-1];
+        // Apply EMA Smoothing (on squared velocities)
+        const float alpha = 0.2f;
+        std::vector<float> smoothedVelocitiesSq = rawVelocities;
+        if (num_segments > 1) {
+             for(size_t i = 1; i < num_segments; ++i) {
+                 smoothedVelocitiesSq[i] = alpha * rawVelocities[i] + (1.0f - alpha) * smoothedVelocitiesSq[i-1];
              }
         }
        
-        // Normalize the SMOOTHED velocities
-        result.velocities.resize(smoothedVelocities.size());
-        float maxSmoothedMagnitude = 0.0f;
-        for(const auto& v : smoothedVelocities) {
-             maxSmoothedMagnitude = std::max(maxSmoothedMagnitude, v);
+        // Normalize smoothed velocities (sqrt at the end)
+        result.velocities.resize(num_segments);
+        // Estimate max smoothed magnitude (use last element after EMA)
+        float maxSmoothedMagnitude = std::sqrt(smoothedVelocitiesSq.back()); 
+        // Recalculate actual max from smoothed values
+        maxSmoothedMagnitude = 0.0f;
+        for(const auto& v_sq : smoothedVelocitiesSq) {
+             maxSmoothedMagnitude = std::max(maxSmoothedMagnitude, std::sqrt(v_sq));
         }
 
         if (maxSmoothedMagnitude > 1e-6) { 
-            std::cout << "Normalizing smoothed velocities (max smoothed magnitude: " << maxSmoothedMagnitude << " px/s)" << std::endl;
-            for (size_t i = 0; i < smoothedVelocities.size(); ++i) {
-                result.velocities[i] = smoothedVelocities[i] / maxSmoothedMagnitude; // Normalize smoothed
+            GESTURE_DEBUG_LOG("Normalizing smoothed velocities (max smoothed magnitude: " << maxSmoothedMagnitude << " px/s)");
+            for (size_t i = 0; i < num_segments; ++i) {
+                result.velocities[i] = std::sqrt(smoothedVelocitiesSq[i]) / maxSmoothedMagnitude; // Normalize
             }
         } else {
-             std::cout << "Smoothed velocities not normalized (max magnitude was zero)." << std::endl;
+             GESTURE_DEBUG_LOG("Smoothed velocities not normalized (max magnitude was zero).");
              std::fill(result.velocities.begin(), result.velocities.end(), 0.0f);
         }
     }
@@ -338,8 +355,8 @@ GestureResult GestureRecognizer::processSimulatedPoints(const std::vector<cv::Po
     }
 
     // Update transition latency in result (using start time of this function)
-    auto endTime = std::chrono::high_resolution_clock::now();
-    float calculatedLatency = std::chrono::duration<float>(endTime - startTime).count();
+    auto end = std::chrono::high_resolution_clock::now(); // Profiling end
+    float calculatedLatency = std::chrono::duration<float>(end - start).count();
     // Note: The GestureResult struct's transitionLatency field is updated by updateTransitionStats
     // We might want to store the processing time separately if needed.
     // result.transitionLatency = calculatedLatency; // This overwrites the combo latency
@@ -348,6 +365,7 @@ GestureResult GestureRecognizer::processSimulatedPoints(const std::vector<cv::Po
 }
 
 GestureResult GestureRecognizer::recognizeKhargail(const std::vector<cv::Point2f>& points) {
+    auto profiler_start = std::chrono::high_resolution_clock::now(); // Profiling start
     auto callTime = std::chrono::high_resolution_clock::now();
     if (points.size() < 3) {
         return {GestureType::NONE, 0.0f, cv::Point2f(), {}, {}, 
@@ -367,16 +385,21 @@ GestureResult GestureRecognizer::recognizeKhargail(const std::vector<cv::Point2f
     std::cout << "Khargail Recognize Debug: Distance=" << distance << ", Confidence=" << confidence 
               << ", MinConfidence=" << m_minConfidence << std::endl;
 
-    if (distance >= 60.0f && confidence >= m_minConfidence) {
+    if (distance >= 60.0f) {
         return {GestureType::KHARGAIL, confidence, end, points, {}, 
                 callTime, callTime, 0.0f};
     }
     
+    auto profiler_end = std::chrono::high_resolution_clock::now(); // Profiling end
+    float profiler_duration = std::chrono::duration<float, std::milli>(profiler_end - profiler_start).count();
+    std::cout << "[Profiler] recognizeKhargail Duration: " << profiler_duration << "ms" << std::endl;
+
     return {GestureType::NONE, 0.0f, cv::Point2f(), {}, {}, 
             callTime, callTime, 0.0f};
 }
 
 GestureResult GestureRecognizer::recognizeFlammil(const std::vector<cv::Point2f>& points) {
+    auto profiler_start = std::chrono::high_resolution_clock::now(); // Profiling start
     auto callTime = std::chrono::high_resolution_clock::now();
     if (points.size() < 3) {
         return {GestureType::NONE, 0.0f, cv::Point2f(), {}, {}, 
@@ -394,18 +417,23 @@ GestureResult GestureRecognizer::recognizeFlammil(const std::vector<cv::Point2f>
     
     std::cout << "Flammil Debug: Distance=" << distance << ", Confidence=" << confidence 
               << ", Start=(" << start.x << "," << start.y << "), End=(" << end.x << "," << end.y << ")"
-              << ", MinConfidence=" << m_minConfidence << std::endl; // Added MinConfidence here too for comparison
+              << ", MinConfidence=" << m_minConfidence << std::endl;
     
-    if (distance >= 75.0f && confidence >= m_minConfidence) {
+    if (distance >= 75.0f) {
         return {GestureType::FLAMMIL, confidence, end, points, {}, 
                 callTime, callTime, 0.0f};
     }
     
+    auto profiler_end = std::chrono::high_resolution_clock::now(); // Profiling end
+    float profiler_duration = std::chrono::duration<float, std::milli>(profiler_end - profiler_start).count();
+    std::cout << "[Profiler] recognizeFlammil Duration: " << profiler_duration << "ms" << std::endl;
+
     return {GestureType::NONE, 0.0f, cv::Point2f(), {}, {}, 
             callTime, callTime, 0.0f};
 }
 
 GestureResult GestureRecognizer::recognizeStasai(const std::vector<cv::Point2f>& points) {
+    auto profiler_start = std::chrono::high_resolution_clock::now(); // Profiling start
     auto callTime = std::chrono::high_resolution_clock::now();
     if (points.size() < 8) {  // Need enough points for circle detection
         return {GestureType::NONE, 0.0f, cv::Point2f(), {}, {}, 
@@ -424,11 +452,16 @@ GestureResult GestureRecognizer::recognizeStasai(const std::vector<cv::Point2f>&
                 callTime, callTime, 0.0f};
     }
     
+    auto profiler_end = std::chrono::high_resolution_clock::now(); // Profiling end
+    float profiler_duration = std::chrono::duration<float, std::milli>(profiler_end - profiler_start).count();
+    std::cout << "[Profiler] recognizeStasai Duration: " << profiler_duration << "ms" << std::endl;
+
     return {GestureType::NONE, 0.0f, cv::Point2f(), {}, {}, 
             callTime, callTime, 0.0f};
 }
 
 GestureResult GestureRecognizer::recognizeAnnihlat(const std::vector<cv::Point2f>& points) {
+    auto profiler_start = std::chrono::high_resolution_clock::now(); // Profiling start
     auto callTime = std::chrono::high_resolution_clock::now();
     if (points.size() < 3) {
         return {GestureType::NONE, 0.0f, cv::Point2f(), {}, {}, 
@@ -448,11 +481,15 @@ GestureResult GestureRecognizer::recognizeAnnihlat(const std::vector<cv::Point2f
     std::cout << "Annihlat Recognize Debug: Distance=" << distance << ", Confidence=" << confidence 
               << ", MinConfidence=" << m_minConfidence << std::endl;
 
-    if (distance >= 60.0f && confidence >= m_minConfidence) {
+    if (distance >= 60.0f) {
         return {GestureType::ANNIHLAT, confidence, end, points, {}, 
                 callTime, callTime, 0.0f};
     }
     
+    auto profiler_end = std::chrono::high_resolution_clock::now(); // Profiling end
+    float profiler_duration = std::chrono::duration<float, std::milli>(profiler_end - profiler_start).count();
+    std::cout << "[Profiler] recognizeAnnihlat Duration: " << profiler_duration << "ms" << std::endl;
+
     return {GestureType::NONE, 0.0f, cv::Point2f(), {}, {}, 
             callTime, callTime, 0.0f};
 }
@@ -472,11 +509,10 @@ void GestureRecognizer::updateTransitionStats(const GestureResult& current, cons
         m_averageTransitionLatency = (m_averageTransitionLatency * 0.9f) + (latency * 0.1f);
 
         // DEBUG OUTPUT FOR TRANSITION
-        std::cout << "UpdateTransitionStats Debug: PrevType=" << static_cast<int>(previous.type)
-                  << ", CurrType=" << static_cast<int>(current.type)
-                  << ", Latency=" << latency << "s"
-                  << ", AvgLatency=" << m_averageTransitionLatency << "s"
-                  << std::endl;
+        GESTURE_DEBUG_LOG("UpdateTransitionStats Debug: PrevType=" << static_cast<int>(previous.type)
+                         << ", CurrType=" << static_cast<int>(current.type)
+                         << ", Latency=" << latency << "s"
+                         << ", AvgLatency=" << m_averageTransitionLatency << "s");
     }
 }
 
@@ -534,6 +570,7 @@ void GestureRecognizer::resetTransitionStats() {
 }
 
 float GestureRecognizer::calculateSwipeConfidence(const std::vector<cv::Point2f>& points, const cv::Point2f& expectedDirection) {
+    auto profiler_start = std::chrono::high_resolution_clock::now(); // Profiling start
     if (points.size() < 5) { // Keep minimum point requirement
         return 0.0f;
     }
@@ -572,10 +609,15 @@ float GestureRecognizer::calculateSwipeConfidence(const std::vector<cv::Point2f>
     // Add other factors? (e.g., penalty for excessive deviation from straight line)
     // For now, focus on direction.
     
+    auto profiler_end = std::chrono::high_resolution_clock::now(); // Profiling end
+    float profiler_duration = std::chrono::duration<float, std::milli>(profiler_end - profiler_start).count();
+    std::cout << "[Profiler] calculateSwipeConfidence Duration: " << profiler_duration << "ms" << std::endl;
+
     return confidence;
 }
 
 bool GestureRecognizer::isCircle(const std::vector<cv::Point2f>& points) {
+    auto profiler_start = std::chrono::high_resolution_clock::now(); // Profiling start
     if (points.size() < 10) {
         return false;
     }
@@ -622,7 +664,13 @@ bool GestureRecognizer::isCircle(const std::vector<cv::Point2f>& points) {
     radiusStdDev = std::sqrt(radiusStdDev / static_cast<float>(points.size()));
     
     // Check if the standard deviation is small enough (indicating a circle)
-    return radiusStdDev < 30.0f * m_sensitivity;
+    bool result = radiusStdDev < 30.0f * m_sensitivity;
+
+    auto profiler_end = std::chrono::high_resolution_clock::now(); // Profiling end
+    float profiler_duration = std::chrono::duration<float, std::milli>(profiler_end - profiler_start).count();
+    std::cout << "[Profiler] isCircle Duration: " << profiler_duration << "ms" << std::endl;
+
+    return result;
 }
 
 void GestureRecognizer::setSensitivity(float sensitivity) {
