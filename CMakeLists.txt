@@ -82,11 +82,12 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     # glfw      # Should be inherited from TurtleEngineCore (PUBLIC)
 )
 
-# Copy shader files to build directory
-file(COPY ${CMAKE_SOURCE_DIR}/shaders DESTINATION ${CMAKE_BINARY_DIR}/bin) # Copy shaders to bin where executables are
-
-# Set output directories *before* targets are defined if needed globally
-# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin) # Keep this commented/removed if only tests go to bin
+# Copy shader files to executable output directory (for ALL executables)
+# Note: Consider copying per-target if different targets need different shaders
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/shaders $<TARGET_FILE_DIR:${PROJECT_NAME}>/shaders
+    COMMENT "Copying shaders to ${PROJECT_NAME} output dir")
 
 if(BUILD_TESTS)
     enable_testing()
@@ -151,6 +152,33 @@ if(BUILD_TESTS)
     add_executable(TurtleEngine_Tests src/tests/TurtleEngine_Tests.cpp)
     target_link_libraries(TurtleEngine_Tests PRIVATE TurtleEngineCore)
     # === END NEW ===
+
+    # Copy shader files to executable output directory (for ALL executables)
+    # Note: Consider copying per-target if different targets need different shaders
+    add_custom_command(TARGET CSLTest POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/shaders $<TARGET_FILE_DIR:CSLTest>/shaders
+        COMMENT "Copying shaders to CSLTest output dir")
+    add_custom_command(TARGET GestureTest POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/shaders $<TARGET_FILE_DIR:GestureTest>/shaders
+        COMMENT "Copying shaders to GestureTest output dir")
+    add_custom_command(TARGET CameraTest POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/shaders $<TARGET_FILE_DIR:CameraTest>/shaders
+        COMMENT "Copying shaders to CameraTest output dir")
+    add_custom_command(TARGET HitboxTest POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/shaders $<TARGET_FILE_DIR:HitboxTest>/shaders
+        COMMENT "Copying shaders to HitboxTest output dir")
+    add_custom_command(TARGET ComboTest POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/shaders $<TARGET_FILE_DIR:ComboTest>/shaders
+        COMMENT "Copying shaders to ComboTest output dir")
+    add_custom_command(TARGET TurtleEngine_Tests POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/shaders $<TARGET_FILE_DIR:TurtleEngine_Tests>/shaders
+        COMMENT "Copying shaders to TurtleEngine_Tests output dir")
 endif()
 
 # After all targets are defined, add the DLL copy commands
