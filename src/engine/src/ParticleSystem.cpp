@@ -154,6 +154,10 @@ void ParticleSystem::render(const glm::mat4& view, const glm::mat4& projection) 
     // glDepthMask(GL_FALSE); 
 
     m_shader.use();
+    // Debug Log
+    GLint particleProgram = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &particleProgram);
+    std::cout << "  [Particle Render] Shader ID: " << particleProgram << ", Valid: " << m_shader.isValid() << std::endl;
+
     m_shader.setMat4("view", view);
     m_shader.setMat4("projection", projection);
     m_shader.setMat4("model", glm::mat4(1.0f)); // Use identity model matrix for world-space particles

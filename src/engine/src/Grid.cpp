@@ -94,6 +94,10 @@ void Grid::createBuffers() {
 
 void Grid::render(const glm::mat4& view, const glm::mat4& projection) {
     m_shader.use();
+    // Debug Log
+    GLint gridProgram = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &gridProgram);
+    std::cout << "  [Grid Render] Shader ID: " << gridProgram << ", Valid: " << m_shader.isValid() << std::endl;
+
     m_shader.setMat4("view", view);
     m_shader.setMat4("projection", projection);
     m_shader.setMat4("model", glm::mat4(1.0f));
