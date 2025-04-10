@@ -11,6 +11,8 @@
 #include <filesystem>
 #include <map>
 #include <numeric> // For std::accumulate if needed later
+#include <future>
+#include <thread>
 
 // Conditional cout macro
 #ifdef ENABLE_GESTURE_DEBUG_LOGGING
@@ -18,6 +20,16 @@
 #else
 #define GESTURE_DEBUG_LOG(x) 
 #endif
+
+// Fast square root approximation with Newton-Raphson iteration
+inline float fastSqrt(float number) {
+    if (number <= 0.0f) return 0.0f; // Handle zero/negative
+    union { float f; int i; } u;
+    u.f = number;
+    u.i = 0x5f3759df - (u.i >> 1); // Initial guess for 1/sqrt(x)
+    u.f = u.f * (1.5f - (0.5f * number * u.f * u.f)); // Newton-Raphson step for 1/sqrt(x)
+    return number * u.f; // Convert 1/sqrt(x) to sqrt(x)
+}
 
 // Define initial map contents (if needed, or initialize empty)
 // static const std::map<TurtleEngine::CSL::GestureType, float> initialThresholds = { ... };
@@ -30,7 +42,9 @@ GestureRecognizer::GestureRecognizer()
     , m_minConfidence(0.70f)
     , m_averageTransitionLatency(0.0f)
     , m_initialized(false)
+    , m_circleClosureThreshold(100.0f)
     // Initialize maps in initializer list
+    // Reverted Flammil threshold back to original requirement
     , m_gestureThresholds({{GestureType::KHARGAIL, 0.78f}, {GestureType::FLAMMIL, 0.74f}, {GestureType::STASAI, 0.80f}, {GestureType::ANNIHLAT, 0.75f}})
     , m_gestureAttempts({{GestureType::KHARGAIL, 0}, {GestureType::FLAMMIL, 0}, {GestureType::STASAI, 0}, {GestureType::ANNIHLAT, 0}, {GestureType::NONE, 0}, {GestureType::TBD, 0}})
     , m_gestureSuccesses({{GestureType::KHARGAIL, 0}, {GestureType::FLAMMIL, 0}, {GestureType::STASAI, 0}, {GestureType::ANNIHLAT, 0}, {GestureType::NONE, 0}, {GestureType::TBD, 0}})
@@ -47,7 +61,52 @@ GestureRecognizer::GestureRecognizer()
     // Map initialization moved to initializer list above
     GESTURE_DEBUG_LOG("GestureRecognizer Constructor: Maps initialized via list");
 
+    // Initialize log file
+    std::filesystem::create_directories("logs");
+    m_logFile.open("logs/gesture_debug.log", std::ios::app);
+    if (!m_logFile.is_open()) {
+        std::cerr << "Failed to open gesture debug log file!" << std::endl;
+    } else {
+        auto now = std::chrono::system_clock::now();
+        auto time = std::chrono::system_clock::to_time_t(now);
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+        
+        std::tm timeInfo;
+        localtime_s(&timeInfo, &time);
+        std::stringstream ss;
+        ss << "[" << std::put_time(&timeInfo, "%Y-%m-%d %H:%M:%S") 
+           << "." << std::setfill('0') << std::setw(3) << ms.count() << "] "
+           << "[Profiler] GestureRecognizer initialized with closure threshold: " 
+           << std::fixed << std::setprecision(3) << m_circleClosureThreshold << " px" << std::endl;
+        
+        m_logFile << ss.str();
+        m_logFile.flush();
+    }
+
     GESTURE_DEBUG_LOG("GestureRecognizer Constructor: End");
+}
+
+void GestureRecognizer::setCircleClosureThreshold(float threshold) {
+    float oldThreshold = m_circleClosureThreshold;
+    m_circleClosureThreshold = std::max(0.1f, std::min(200.0f, threshold));
+    
+    // Log threshold adjustment
+    if (m_logFile.is_open()) {
+        auto now = std::chrono::system_clock::now();
+        auto time = std::chrono::system_clock::to_time_t(now);
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+        
+        std::tm timeInfo;
+        localtime_s(&timeInfo, &time);
+        std::stringstream ss;
+        ss << "[" << std::put_time(&timeInfo, "%Y-%m-%d %H:%M:%S") 
+           << "." << std::setfill('0') << std::setw(3) << ms.count() << "] "
+           << "[Profiler] Circle Closure Threshold Updated: " << std::fixed << std::setprecision(3)
+           << oldThreshold << " px -> " << m_circleClosureThreshold << " px" << std::endl;
+        
+        m_logFile << ss.str();
+        m_logFile.flush();
+    }
 }
 
 GestureRecognizer::~GestureRecognizer() {
@@ -78,290 +137,246 @@ bool GestureRecognizer::initialize() {
 }
 
 GestureResult GestureRecognizer::processFrame(const cv::Mat& frame) {
-    auto start = std::chrono::high_resolution_clock::now(); // Profiling start
-
+    auto startTime = std::chrono::high_resolution_clock::now();
+    
     if (!m_initialized || frame.empty()) {
         return {GestureType::NONE, 0.0f, cv::Point2f(), {}, {}, 
-                start, start, 0.0f};
+                startTime, startTime, 0.0f};
     }
 
-    // Process frame and detect gestures (Placeholder - needs real point tracking)
-    // For now, copy simulation logic - replace with actual tracking later
-    std::vector<cv::Point2f> currentPoints; // Needs to be populated by tracking
+    // Point tracking logic needs to populate currentPoints
+    std::vector<cv::Point2f> currentPoints; 
+    // --- Placeholder for actual point tracking --- 
+    // currentPoints = trackPoints(frame); 
+    // --- End Placeholder --- 
+    
     // ** Boundary Handling Placeholder: Real tracking should handle this **
-    const float screenWidth = 1280.0f; // Assuming fixed resolution for now
+    const float screenWidth = 1280.0f; 
     const float screenHeight = 720.0f;
     for (auto& pt : currentPoints) { 
         pt.x = std::max(0.0f, std::min(screenWidth - 1, pt.x));
         pt.y = std::max(0.0f, std::min(screenHeight - 1, pt.y));
     }
+
     GestureResult result = {GestureType::NONE, 0.0f, cv::Point2f(), currentPoints, {}, 
-                           start, start, 0.0f};
-    
-    // Try each gesture type with gesture-specific thresholds
-    auto khargailResult = recognizeKhargail(m_previousPoints);
-    if (khargailResult.confidence > result.confidence) {
-        result = khargailResult;
+                           startTime, startTime, 0.0f};
+
+    // Revert to Sequential gesture recognition
+    GestureResult bestResult = result; // Start with NONE
+
+    auto khargailResult = recognizeKhargail(currentPoints);
+    if (khargailResult.confidence > bestResult.confidence) {
+        bestResult = khargailResult;
+    }
+    if (khargailResult.type != GestureType::NONE) {
         m_gestureAttempts[GestureType::KHARGAIL]++;
     }
-    
-    auto flammilResult = recognizeFlammil(m_previousPoints);
-    if (flammilResult.confidence > result.confidence) {
-        result = flammilResult;
+
+    auto flammilResult = recognizeFlammil(currentPoints);
+    if (flammilResult.confidence > bestResult.confidence) {
+        bestResult = flammilResult;
+    }
+    if (flammilResult.type != GestureType::NONE) {
         m_gestureAttempts[GestureType::FLAMMIL]++;
     }
-    
-    auto stasaiResult = recognizeStasai(m_previousPoints);
-    if (stasaiResult.confidence > result.confidence) {
-        result = stasaiResult;
+
+    auto stasaiResult = recognizeStasai(currentPoints, "");
+    if (stasaiResult.confidence > bestResult.confidence) {
+        bestResult = stasaiResult;
+    }
+    if (stasaiResult.type != GestureType::NONE) {
         m_gestureAttempts[GestureType::STASAI]++;
     }
-    
-    auto annihlatResult = recognizeAnnihlat(m_previousPoints);
-    if (annihlatResult.confidence > result.confidence) {
-        result = annihlatResult;
+
+    auto annihlatResult = recognizeAnnihlat(currentPoints);
+    if (annihlatResult.confidence > bestResult.confidence) {
+        bestResult = annihlatResult;
+    }
+    if (annihlatResult.type != GestureType::NONE) {
         m_gestureAttempts[GestureType::ANNIHLAT]++;
     }
+
+    bestResult.trajectory = currentPoints; // Ensure trajectory is set
+    result = bestResult;
 
     // Update transition stats if a gesture was detected
     if (result.type != GestureType::NONE) {
         float threshold = m_gestureThresholds.count(result.type) ? m_gestureThresholds.at(result.type) : m_minConfidence;
         if (result.confidence >= threshold) {
-            if (m_gestureSuccesses.count(result.type)) { m_gestureSuccesses.at(result.type)++; }
-            updateTransitionStats(result, m_lastGesture);
-            logGestureResult(result);
-            m_lastGesture = result;
-        } else {
-            // Log failed attempt even if confidence was highest but below threshold
-            // Create a temporary struct for logging, copying necessary fields
-            GestureResult failedLogResult = result; // Copy base result values
-            failedLogResult.transitionLatency = 0.0f; // Ensure latency is 0 for this specific log
-            // endTimestamp should be set before velocity calculation, ensure it's valid
-            if (failedLogResult.endTimestamp == std::chrono::high_resolution_clock::time_point{}) {
-                 failedLogResult.endTimestamp = result.timestamp; // Fallback to start time if end time is unset
+            if (m_gestureSuccesses.count(result.type)) { 
+                 // No lock needed for m_gestureSuccesses if only updated here under threshold check?
+                 // Re-eval: If multiple threads could potentially write here (unlikely with current structure but possible later), lock needed.
+                 // For now, assume threshold check serializes access. If profiling shows contention, add lock. 
+                m_gestureSuccesses.at(result.type)++; 
             }
-            logGestureResult(failedLogResult); 
-            result.type = GestureType::NONE; // Reset type if below threshold
+            updateTransitionStats(result, m_lastGesture); // Needs m_lastGesture - is this thread safe?
+            // m_lastGesture is only written *after* this block, and read by updateTransitionStats.
+            // Assumed safe for now, but needs verification if processFrame itself runs concurrently.
+            logGestureResult(result); // Uses m_logFile - ofstream might not be thread-safe by default.
+            // Need to protect log file access if processFrame runs concurrently.
+            m_lastGesture = result; // Update last gesture *after* processing
+        } else {
+            // Log failed attempt 
+            GestureResult failedLogResult = result; 
+            failedLogResult.transitionLatency = 0.0f; 
+            if (failedLogResult.endTimestamp == std::chrono::high_resolution_clock::time_point{}) {
+                 failedLogResult.endTimestamp = result.timestamp; 
+            }
+            logGestureResult(failedLogResult); // Potential log file access issue
+            result.type = GestureType::NONE; 
         }
     } else {
         // Log if no gesture type had any confidence
-        // Create a temporary struct for logging
-        GestureResult failedLogResult = result; // Copy base result values
-        failedLogResult.transitionLatency = 0.0f; // Ensure latency is 0 for this specific log
-        // endTimestamp is already set before velocity calc
-        logGestureResult(failedLogResult); 
+        GestureResult failedLogResult = result; 
+        failedLogResult.transitionLatency = 0.0f; 
+        logGestureResult(failedLogResult); // Potential log file access issue
         result.type = GestureType::NONE;
     }
 
-    auto end = std::chrono::high_resolution_clock::now(); // Profiling end
-    std::chrono::duration<double, std::milli> duration = end - start;
+    auto endTime = std::chrono::high_resolution_clock::now(); // Profiling end
+    std::chrono::duration<double, std::milli> duration = endTime - startTime;
     std::cout << "[Profiler] processFrame Duration: " << duration.count() << "ms" << std::endl;
 
-    // Optimize Velocity Calculation & Smoothing & Normalization (Placeholder in processFrame)
+    // Simplified Velocity Calculation Block (remove EMA and normalization)
     result.velocities.clear();
     if (result.trajectory.size() > 1) {
         size_t num_segments = result.trajectory.size() - 1;
-        std::vector<float> rawVelocities(num_segments);
-        const float timeStepSq = (1.0f / 60.0f) * (1.0f / 60.0f);
-        float maxMagnitudeSq = 0.0f;
+        result.velocities.resize(num_segments);
+        const float timeStep = (1.0f / 60.0f);
+        // Removed: alpha, maxMagnitude, smoothedVelocity initialization
 
-        // Calculate raw velocities (squared magnitude)
+        // Calculate and store raw velocities
         for (size_t i = 0; i < num_segments; ++i) {
             float dx = result.trajectory[i+1].x - result.trajectory[i].x;
             float dy = result.trajectory[i+1].y - result.trajectory[i].y;
             float distSq = dx * dx + dy * dy;
-            float velocitySq = distSq / timeStepSq;
-            rawVelocities[i] = velocitySq;
-            maxMagnitudeSq = std::max(maxMagnitudeSq, velocitySq);
+            float velocity = 0.0f;
+            if (distSq > 1e-9) {
+                float dist = fastSqrt(distSq); // Using fastSqrt
+                velocity = dist / timeStep; 
+            }
+            result.velocities[i] = velocity; // Store raw velocity directly
+            // Removed: EMA calculation
+            // Removed: maxMagnitude tracking
         }
         
-        // Apply EMA Smoothing (on squared velocities, then sqrt)
-        const float alpha = 0.2f;
-        std::vector<float> smoothedVelocitiesSq = rawVelocities;
-        if (num_segments > 1) {
-            for(size_t i = 1; i < num_segments; ++i) {
-                smoothedVelocitiesSq[i] = alpha * rawVelocities[i] + (1.0f - alpha) * smoothedVelocitiesSq[i-1];
-            }
-        }
-        
-        // Normalize smoothed velocities (sqrt at the end)
-        result.velocities.resize(num_segments);
-        float maxSmoothedMagnitude = std::sqrt(smoothedVelocitiesSq.back()); // Approx max after EMA
-        // Recalculate actual max from smoothed values
-        maxSmoothedMagnitude = 0.0f;
-        for(const auto& v_sq : smoothedVelocitiesSq) {
-             maxSmoothedMagnitude = std::max(maxSmoothedMagnitude, std::sqrt(v_sq));
-        }
-
-        if (maxSmoothedMagnitude > 1e-6) { 
-            GESTURE_DEBUG_LOG("Normalizing smoothed velocities (max smoothed magnitude: " << maxSmoothedMagnitude << " px/s)");
-            for (size_t i = 0; i < num_segments; ++i) {
-                result.velocities[i] = std::sqrt(smoothedVelocitiesSq[i]) / maxSmoothedMagnitude;
-            }
-        } else {
-             GESTURE_DEBUG_LOG("Smoothed velocities not normalized (max magnitude was zero).");
-             std::fill(result.velocities.begin(), result.velocities.end(), 0.0f);
-        }
+        // Removed: Normalization loop
+        GESTURE_DEBUG_LOG("Stored raw velocities.");
     }
     
-    // Ensure final position is also clamped
+    // Ensure final position is clamped
     result.position.x = std::max(0.0f, std::min(screenWidth - 1, result.position.x));
     result.position.y = std::max(0.0f, std::min(screenHeight - 1, result.position.y));
 
     return result;
 }
 
-GestureResult GestureRecognizer::processSimulatedPoints(const std::vector<cv::Point2f>& points) {
-    auto start = std::chrono::high_resolution_clock::now(); // Profiling start
+GestureResult GestureRecognizer::processSimulatedPoints(const std::vector<cv::Point2f>& points, const std::string& testCaseId) {
+    auto profiler_start = std::chrono::high_resolution_clock::now();
+    GestureResult finalResult = {GestureType::NONE, 0.0f, cv::Point2f(), {}, {}, profiler_start, profiler_start, 0.0f}; // Initialize result
 
-    if (!m_initialized || points.empty()) {
-        std::cout << "Not initialized or empty points, returning NONE" << std::endl;
-        auto now = std::chrono::high_resolution_clock::now();
-        return {GestureType::NONE, 0.0f, cv::Point2f(), {}, {}, 
-                now, now, 0.0f};
+    if (points.size() < 3) {
+        auto profiler_end = std::chrono::high_resolution_clock::now();
+        float profiler_duration = std::chrono::duration<float, std::milli>(profiler_end - profiler_start).count();
+        if (m_logFile.is_open()) {
+            auto log_now = std::chrono::system_clock::now(); // Use system_clock for wall time
+            auto time = std::chrono::system_clock::to_time_t(log_now);
+            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(log_now.time_since_epoch()) % 1000;
+
+            std::tm timeInfo;
+            localtime_s(&timeInfo, &time);
+            std::stringstream ss;
+            ss << "[" << std::put_time(&timeInfo, "%Y-%m-%d %H:%M:%S")
+               << "." << std::setfill('0') << std::setw(3) << ms.count() << "] "
+               << "[Profiler] processSimulatedPoints Early Exit (Points): " << points.size() << " < 3"
+               << ", TestCase: " << testCaseId << ", Duration: " << profiler_duration << " ms" << std::endl;
+
+            m_logFile << ss.str();
+            m_logFile.flush(); // Ensure log is written
+        }
+        finalResult.endTimestamp = profiler_end; // Set end time even on early exit
+        return finalResult; // Return initialized result
     }
 
-    // Make a mutable copy for potential clamping
-    std::vector<cv::Point2f> processedPoints = points;
+    // --- Recognize All Gestures Sequentially for Simulation --- 
+    GestureResult bestResult = {GestureType::NONE, 0.0f}; // Start with NONE
 
-    // ** Boundary Handling: Clamp points to a typical screen space (e.g., 1280x720) **
-    const float screenWidth = 1280.0f;
-    const float screenHeight = 720.0f;
-    for (auto& pt : processedPoints) {
-        pt.x = std::max(0.0f, std::min(screenWidth - 1, pt.x));
-        pt.y = std::max(0.0f, std::min(screenHeight - 1, pt.y));
-    }
-
-    // Correct initial result initializer list with std::vector<float> for velocities
-    GestureResult result = {GestureType::NONE, 0.0f, cv::Point2f(), processedPoints, {}, 
-                           start, start, 0.0f};
-    GESTURE_DEBUG_LOG("Starting gesture recognition");
-
-    // --- REVISED RECOGNITION LOGIC --- 
-    GestureResult bestResult = result;
-
-    auto khargailResult = recognizeKhargail(processedPoints);
-    std::cout << "Khargail confidence: " << khargailResult.confidence << std::endl;
+    // Recognize Khargail
+    auto khargailResult = recognizeKhargail(points);
     if (khargailResult.confidence > bestResult.confidence) {
         bestResult = khargailResult;
     }
-    if (khargailResult.type != GestureType::NONE) m_gestureAttempts[GestureType::KHARGAIL]++;
 
-    auto flammilResult = recognizeFlammil(processedPoints);
-    std::cout << "Flammil confidence: " << flammilResult.confidence << std::endl;
+    // Recognize Flammil
+    auto flammilResult = recognizeFlammil(points);
     if (flammilResult.confidence > bestResult.confidence) {
         bestResult = flammilResult;
     }
-    if (flammilResult.type != GestureType::NONE) m_gestureAttempts[GestureType::FLAMMIL]++;
 
-    auto stasaiResult = recognizeStasai(processedPoints);
-    std::cout << "Stasai confidence: " << stasaiResult.confidence << std::endl;
+    // Recognize Stasai
+    auto stasaiResult = recognizeStasai(points, testCaseId); // Pass testCaseId
     if (stasaiResult.confidence > bestResult.confidence) {
         bestResult = stasaiResult;
     }
-    if (stasaiResult.type != GestureType::NONE) m_gestureAttempts[GestureType::STASAI]++;
 
-    auto annihlatResult = recognizeAnnihlat(processedPoints);
-    std::cout << "Annihlat confidence: " << annihlatResult.confidence << std::endl;
+    // Recognize Annihlat
+    auto annihlatResult = recognizeAnnihlat(points);
     if (annihlatResult.confidence > bestResult.confidence) {
         bestResult = annihlatResult;
     }
-    if (annihlatResult.type != GestureType::NONE) m_gestureAttempts[GestureType::ANNIHLAT]++;
-    
-    // Assign the best result found
-    result = bestResult; 
+    // --- End Sequential Recognition --- 
 
-    GESTURE_DEBUG_LOG("Finished recognition, best result type: " << static_cast<int>(result.type) << " with confidence: " << result.confidence);
+    // Now process the best result found
+    if (bestResult.type != GestureType::NONE) { // Check if any gesture was recognized
+       // Use the threshold defined for this specific gesture type, or the minimum confidence
+        float requiredConfidence = getGestureThreshold(bestResult.type);
 
-    // Optimize Velocity Calculation & Smoothing & Normalization (Simulation)
-    result.velocities.clear();
-    if (processedPoints.size() > 1) {
-        size_t num_segments = processedPoints.size() - 1;
-        std::vector<float> rawVelocities(num_segments);
-        const float timeStepSq = (1.0f / 60.0f) * (1.0f / 60.0f);
-        float maxMagnitudeSq = 0.0f;
+        if (bestResult.confidence >= requiredConfidence) {
+             // Gesture recognized successfully
+            auto profiler_end = std::chrono::high_resolution_clock::now(); // Use high_resolution_clock for duration
+            float profiler_duration = std::chrono::duration<float, std::milli>(profiler_end - profiler_start).count();
+            // Assign timestamps and duration to the successful result
+            bestResult.timestamp = profiler_start;
+            bestResult.endTimestamp = profiler_end;
+            bestResult.transitionLatency = profiler_duration; // Using latency field for duration in simulation
+            bestResult.trajectory = points; // Ensure trajectory is included
 
-        // Calculate raw velocities (squared magnitude)
-        for (size_t i = 0; i < num_segments; ++i) {
-            float dx = processedPoints[i+1].x - processedPoints[i].x;
-            float dy = processedPoints[i+1].y - processedPoints[i].y;
-            float distSq = dx * dx + dy * dy;
-            float velocitySq = distSq / timeStepSq;
-            rawVelocities[i] = velocitySq; // Store squared velocity
-            maxMagnitudeSq = std::max(maxMagnitudeSq, velocitySq);
-        }
+            if (m_logFile.is_open()) {
+                auto log_now = std::chrono::system_clock::now(); // Use system_clock for wall time logging
+                auto time = std::chrono::system_clock::to_time_t(log_now);
+                auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(log_now.time_since_epoch()) % 1000;
 
-        // Apply EMA Smoothing (on squared velocities)
-        const float alpha = 0.2f;
-        std::vector<float> smoothedVelocitiesSq = rawVelocities;
-        if (num_segments > 1) {
-             for(size_t i = 1; i < num_segments; ++i) {
-                 smoothedVelocitiesSq[i] = alpha * rawVelocities[i] + (1.0f - alpha) * smoothedVelocitiesSq[i-1];
-             }
-        }
-       
-        // Normalize smoothed velocities (sqrt at the end)
-        result.velocities.resize(num_segments);
-        // Estimate max smoothed magnitude (use last element after EMA)
-        float maxSmoothedMagnitude = std::sqrt(smoothedVelocitiesSq.back()); 
-        // Recalculate actual max from smoothed values
-        maxSmoothedMagnitude = 0.0f;
-        for(const auto& v_sq : smoothedVelocitiesSq) {
-             maxSmoothedMagnitude = std::max(maxSmoothedMagnitude, std::sqrt(v_sq));
-        }
+                std::tm timeInfo;
+                localtime_s(&timeInfo, &time);
+                std::stringstream ss;
+                 // Log recognized gesture
+                ss << "[" << std::put_time(&timeInfo, "%Y-%m-%d %H:%M:%S")
+                   << "." << std::setfill('0') << std::setw(3) << ms.count() << "] "
+                   << "[Profiler] Gesture Recognized (Simulated): " << static_cast<int>(bestResult.type)
+                   << ", Confidence: " << std::fixed << std::setprecision(3) << bestResult.confidence
+                   << ", TestCase: " << testCaseId << ", Total Duration: " << profiler_duration << " ms" << std::endl;
 
-        if (maxSmoothedMagnitude > 1e-6) { 
-            GESTURE_DEBUG_LOG("Normalizing smoothed velocities (max smoothed magnitude: " << maxSmoothedMagnitude << " px/s)");
-            for (size_t i = 0; i < num_segments; ++i) {
-                result.velocities[i] = std::sqrt(smoothedVelocitiesSq[i]) / maxSmoothedMagnitude; // Normalize
+                m_logFile << ss.str();
+                m_logFile.flush(); // Ensure log is written
             }
-        } else {
-             GESTURE_DEBUG_LOG("Smoothed velocities not normalized (max magnitude was zero).");
-             std::fill(result.velocities.begin(), result.velocities.end(), 0.0f);
-        }
-    }
 
-    // Apply gesture-specific threshold and update stats for the final best result
-    if (result.type != GestureType::NONE) {
-        float threshold = m_gestureThresholds.count(result.type) ? m_gestureThresholds.at(result.type) : m_minConfidence;
-        if (result.confidence >= threshold) {
-            if (m_gestureSuccesses.count(result.type)) { m_gestureSuccesses.at(result.type)++; }
-            updateTransitionStats(result, m_lastGesture);
-            logGestureResult(result);
-            result.position = processedPoints.back();
-            result.position.x = std::max(0.0f, std::min(screenWidth - 1, result.position.x));
-            result.position.y = std::max(0.0f, std::min(screenHeight - 1, result.position.y));
-            m_lastGesture = result;
+            // Update state for successful recognition
+            m_lastRecognizedGesture = bestResult;
+            m_lastGestureTime = profiler_end; // Use the end time of processing
+            finalResult = bestResult; // Update the final result to return
         } else {
-            // Log failed attempt even if confidence was highest but below threshold
-            // Create a temporary struct for logging, copying necessary fields
-            GestureResult failedLogResult = result; // Copy base result values
-            failedLogResult.transitionLatency = 0.0f; // Ensure latency is 0 for this specific log
-            // endTimestamp should be set before velocity calculation, ensure it's valid
-            if (failedLogResult.endTimestamp == std::chrono::high_resolution_clock::time_point{}) {
-                 failedLogResult.endTimestamp = result.timestamp; // Fallback to start time if end time is unset
-            }
-            logGestureResult(failedLogResult); 
-            result.type = GestureType::NONE; // Reset type if below threshold
+             // Log gesture attempt that failed confidence check
+             // (Optional: Add logging here if needed for low-confidence attempts)
+             finalResult.type = GestureType::NONE; // Ensure result type is NONE if confidence too low
+             finalResult.endTimestamp = std::chrono::high_resolution_clock::now();
         }
     } else {
-        // Log if no gesture type had any confidence
-        // Create a temporary struct for logging
-        GestureResult failedLogResult = result; // Copy base result values
-        failedLogResult.transitionLatency = 0.0f; // Ensure latency is 0 for this specific log
-        // endTimestamp is already set before velocity calc
-        logGestureResult(failedLogResult); 
-        result.type = GestureType::NONE;
+         // No gesture was recognized by any recognizer
+         finalResult.type = GestureType::NONE;
+         finalResult.endTimestamp = std::chrono::high_resolution_clock::now();
     }
 
-    // Update transition latency in result (using start time of this function)
-    auto end = std::chrono::high_resolution_clock::now(); // Profiling end
-    float calculatedLatency = std::chrono::duration<float>(end - start).count();
-    // Note: The GestureResult struct's transitionLatency field is updated by updateTransitionStats
-    // We might want to store the processing time separately if needed.
-    // result.transitionLatency = calculatedLatency; // This overwrites the combo latency
-
-    return result;
+    return finalResult;
 }
 
 GestureResult GestureRecognizer::recognizeKhargail(const std::vector<cv::Point2f>& points) {
@@ -432,32 +447,67 @@ GestureResult GestureRecognizer::recognizeFlammil(const std::vector<cv::Point2f>
             callTime, callTime, 0.0f};
 }
 
-GestureResult GestureRecognizer::recognizeStasai(const std::vector<cv::Point2f>& points) {
-    auto profiler_start = std::chrono::high_resolution_clock::now(); // Profiling start
-    auto callTime = std::chrono::high_resolution_clock::now();
-    if (points.size() < 8) {  // Need enough points for circle detection
-        return {GestureType::NONE, 0.0f, cv::Point2f(), {}, {}, 
-                callTime, callTime, 0.0f};
+GestureResult GestureRecognizer::recognizeStasai(const std::vector<cv::Point2f>& points, const std::string& testCaseId) {
+    auto profiler_start = std::chrono::high_resolution_clock::now();
+    const size_t minPoints = 8;
+    float confidence = 0.0f;
+
+    if (points.size() < minPoints) {
+        auto profiler_end = std::chrono::high_resolution_clock::now();
+        float profiler_duration = std::chrono::duration<float, std::milli>(profiler_end - profiler_start).count();
+        if (m_logFile.is_open()) {
+            auto now = std::chrono::system_clock::now();
+            auto time = std::chrono::system_clock::to_time_t(now);
+            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+            
+            std::tm timeInfo;
+            localtime_s(&timeInfo, &time);
+            std::stringstream ss;
+            ss << "[" << std::put_time(&timeInfo, "%Y-%m-%d %H:%M:%S") 
+               << "." << std::setfill('0') << std::setw(3) << ms.count() << "] "
+               << "[Profiler] recognizeStasai Early Exit (Points): " << points.size() << " < " << minPoints 
+               << ", TestCase: " << testCaseId << ", Duration: " << profiler_duration << " ms" << std::endl;
+            
+            m_logFile << ss.str();
+        }
+        return { GestureType::NONE, 0.0f, cv::Point2f(), {}, {}, profiler_start, profiler_end, profiler_duration };
     }
 
-    // Stasai is a tight circle (50px, 0.6s)
-    // ADD DEBUG FOR STASAI
-    bool is_circle = isCircle(points);
-    float confidence = is_circle ? 0.8f : 0.0f; // Base confidence for circle detection or 0
-    std::cout << "Stasai Recognize Debug: IsCircle=" << (is_circle ? "true" : "false") << ", Confidence=" << confidence << std::endl;
+    // Check if points form a circle
+    bool isCircleResult = isCircle(points, testCaseId);
+    confidence = isCircleResult ? 1.0f : 0.0f;
 
-    if (is_circle) { // No separate confidence check here, relies on isCircle
-        //float confidence = 0.8f;  // Base confidence for circle detection
-        return {GestureType::STASAI, confidence, points.back(), points, {}, 
-                callTime, callTime, 0.0f};
-    }
-    
-    auto profiler_end = std::chrono::high_resolution_clock::now(); // Profiling end
+    auto profiler_end = std::chrono::high_resolution_clock::now();
     float profiler_duration = std::chrono::duration<float, std::milli>(profiler_end - profiler_start).count();
-    std::cout << "[Profiler] recognizeStasai Duration: " << profiler_duration << "ms" << std::endl;
+    
+    // Log final result with test case ID
+    if (m_logFile.is_open()) {
+        auto now = std::chrono::system_clock::now();
+        auto time = std::chrono::system_clock::to_time_t(now);
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+        
+        std::tm timeInfo;
+        localtime_s(&timeInfo, &time);
+        std::stringstream ss;
+        ss << "[" << std::put_time(&timeInfo, "%Y-%m-%d %H:%M:%S") 
+           << "." << std::setfill('0') << std::setw(3) << ms.count() << "] "
+           << "[Profiler] recognizeStasai Result: " << (isCircleResult ? "true" : "false")
+           << ", Confidence: " << std::fixed << std::setprecision(3) << confidence
+           << ", TestCase: " << testCaseId << ", Duration: " << profiler_duration << " ms" << std::endl;
+        
+        m_logFile << ss.str();
+    }
 
-    return {GestureType::NONE, 0.0f, cv::Point2f(), {}, {}, 
-            callTime, callTime, 0.0f};
+    return {
+        isCircleResult ? GestureType::STASAI : GestureType::NONE,
+        confidence,
+        points.empty() ? cv::Point2f() : points.back(),
+        points,
+        {},
+        profiler_start,
+        profiler_end,
+        profiler_duration
+    };
 }
 
 GestureResult GestureRecognizer::recognizeAnnihlat(const std::vector<cv::Point2f>& points) {
@@ -616,59 +666,183 @@ float GestureRecognizer::calculateSwipeConfidence(const std::vector<cv::Point2f>
     return confidence;
 }
 
-bool GestureRecognizer::isCircle(const std::vector<cv::Point2f>& points) {
-    auto profiler_start = std::chrono::high_resolution_clock::now(); // Profiling start
-    if (points.size() < 10) {
+bool GestureRecognizer::isCircle(const std::vector<cv::Point2f>& points, const std::string& testCaseId) {
+    auto profiler_start = std::chrono::high_resolution_clock::now();
+    const size_t minPointsForCircle = 8;
+    const float varianceThresholdSquared = 5000.0f; // Increased from 2500.0f
+
+    if (points.size() < minPointsForCircle) {
+        auto profiler_end = std::chrono::high_resolution_clock::now();
+        float profiler_duration = std::chrono::duration<float, std::milli>(profiler_end - profiler_start).count();
+        if (m_logFile.is_open()) {
+            auto now = std::chrono::system_clock::now();
+            auto time = std::chrono::system_clock::to_time_t(now);
+            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+            
+            std::tm timeInfo;
+            localtime_s(&timeInfo, &time);
+            std::stringstream ss;
+            ss << "[" << std::put_time(&timeInfo, "%Y-%m-%d %H:%M:%S") 
+               << "." << std::setfill('0') << std::setw(3) << ms.count() << "] "
+               << "[Profiler] isCircle Early Exit (Points): " << points.size() << " < " << minPointsForCircle 
+               << ", TestCase: " << testCaseId << ", Duration: " << profiler_duration << " ms" << std::endl;
+            
+            m_logFile << ss.str();
+        }
         return false;
     }
+
+    // Calculate rough closure distance (start to end point)
+    cv::Point2f start = points.front();
+    cv::Point2f end = points.back();
+    float roughClosureDistance = std::sqrt(
+        (end.x - start.x) * (end.x - start.x) + 
+        (end.y - start.y) * (end.y - start.y)
+    );
+
+    // Log closure distance with test case ID
+    if (m_logFile.is_open()) {
+        auto now = std::chrono::system_clock::now();
+        auto time = std::chrono::system_clock::to_time_t(now);
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+        
+        std::tm timeInfo;
+        localtime_s(&timeInfo, &time);
+        std::stringstream ss;
+        ss << "[" << std::put_time(&timeInfo, "%Y-%m-%d %H:%M:%S") 
+           << "." << std::setfill('0') << std::setw(3) << ms.count() << "] "
+           << "[Profiler] isCircle Closure Distance: " << std::fixed << std::setprecision(3) 
+           << roughClosureDistance << " px (Threshold: " << m_circleClosureThreshold << " px), "
+           << "TestCase: " << testCaseId << ", Points: " << points.size() << std::endl;
+        
+        m_logFile << ss.str();
+    }
     
-    // Calculate the center of the points
+    // If start and end points are too far apart, it's probably not a circle
+    if (roughClosureDistance > m_circleClosureThreshold) {
+        auto profiler_end = std::chrono::high_resolution_clock::now();
+        float profiler_duration = std::chrono::duration<float, std::milli>(profiler_end - profiler_start).count();
+        if (m_logFile.is_open()) {
+            auto now = std::chrono::system_clock::now();
+            auto time = std::chrono::system_clock::to_time_t(now);
+            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+            
+            std::tm timeInfo;
+            localtime_s(&timeInfo, &time);
+            std::stringstream ss;
+            ss << "[" << std::put_time(&timeInfo, "%Y-%m-%d %H:%M:%S") 
+               << "." << std::setfill('0') << std::setw(3) << ms.count() << "] "
+               << "[Profiler] isCircle Early Exit (Closure): " << profiler_duration << " ms, "
+               << "TestCase: " << testCaseId << std::endl;
+            
+            m_logFile << ss.str();
+        }
+        return false;
+    }
+
+    // Sample every third point for better performance
+    const size_t step = 3;
+    size_t sampled_count = 0;
+    std::vector<cv::Point2f> sampled_points;
+    sampled_points.reserve(points.size() / step + 1);
+
+    // Calculate center using sampled points
     cv::Point2f center(0, 0);
-    for (const auto& point : points) {
-        center += point;
+    for (size_t i = 0; i < points.size(); i += step) {
+        sampled_points.push_back(points[i]);
+        center += points[i];
+        sampled_count++;
     }
-    center /= static_cast<float>(points.size());
-    
-    // Calculate the average radius
-    float avgRadius = 0.0f;
-    for (const auto& point : points) {
-        avgRadius += std::sqrt(
-            (point.x - center.x) * (point.x - center.x) + 
-            (point.y - center.y) * (point.y - center.y));
-    }
-    avgRadius /= static_cast<float>(points.size());
-    
-    // *** ADD CLOSURE CHECK ***
-    cv::Point2f startPoint = points.front();
-    cv::Point2f endPoint = points.back();
-    float closureDistance = std::sqrt(
-        (endPoint.x - startPoint.x) * (endPoint.x - startPoint.x) +
-        (endPoint.y - startPoint.y) * (endPoint.y - startPoint.y));
 
-    // Allow closure distance up to, e.g., 50% of the average radius
-    // Adjust this threshold as needed
-    float maxClosure = 0.5f * avgRadius; 
-    if (closureDistance > maxClosure) {
-        return false; // Not closed enough for a circle
+    // Log sampled points count with test case ID
+    if (m_logFile.is_open()) {
+        auto now = std::chrono::system_clock::now();
+        auto time = std::chrono::system_clock::to_time_t(now);
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+        
+        std::tm timeInfo;
+        localtime_s(&timeInfo, &time);
+        std::stringstream ss;
+        ss << "[" << std::put_time(&timeInfo, "%Y-%m-%d %H:%M:%S") 
+           << "." << std::setfill('0') << std::setw(3) << ms.count() << "] "
+           << "[Profiler] isCircle Sampled Points: " << sampled_count << " (from " << points.size() << " total), "
+           << "TestCase: " << testCaseId << std::endl;
+        
+        m_logFile << ss.str();
     }
-    // *** END CLOSURE CHECK ***
 
-    // Calculate the standard deviation of the radius
-    float radiusStdDev = 0.0f;
-    for (const auto& point : points) {
-        float radius = std::sqrt(
-            (point.x - center.x) * (point.x - center.x) + 
-            (point.y - center.y) * (point.y - center.y));
-        radiusStdDev += (radius - avgRadius) * (radius - avgRadius);
+    if (sampled_count < minPointsForCircle / step) {
+        auto profiler_end = std::chrono::high_resolution_clock::now();
+        float profiler_duration = std::chrono::duration<float, std::milli>(profiler_end - profiler_start).count();
+        if (m_logFile.is_open()) {
+            auto now = std::chrono::system_clock::now();
+            auto time = std::chrono::system_clock::to_time_t(now);
+            auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+            
+            std::tm timeInfo;
+            localtime_s(&timeInfo, &time);
+            std::stringstream ss;
+            ss << "[" << std::put_time(&timeInfo, "%Y-%m-%d %H:%M:%S") 
+               << "." << std::setfill('0') << std::setw(3) << ms.count() << "] "
+               << "[Profiler] isCircle Early Exit (Sample Count): " << profiler_duration << " ms, "
+               << "TestCase: " << testCaseId << std::endl;
+            
+            m_logFile << ss.str();
+        }
+        return false;
     }
-    radiusStdDev = std::sqrt(radiusStdDev / static_cast<float>(points.size()));
-    
-    // Check if the standard deviation is small enough (indicating a circle)
-    bool result = radiusStdDev < 30.0f * m_sensitivity;
 
-    auto profiler_end = std::chrono::high_resolution_clock::now(); // Profiling end
+    center /= static_cast<float>(sampled_count);
+
+    // Pre-calculate squared distances for SIMD-friendly processing
+    std::vector<float> squared_distances;
+    squared_distances.reserve(sampled_count);
+    float avgRadiusSquared = 0.0f;
+
+    for (const auto& point : sampled_points) {
+        float dx = point.x - center.x;
+        float dy = point.y - center.y;
+        float distSq = dx * dx + dy * dy;
+        squared_distances.push_back(distSq);
+        avgRadiusSquared += distSq;
+    }
+    avgRadiusSquared /= static_cast<float>(sampled_count);
+
+    // --- New Approach: Check individual point deviations from average radius --- 
+    float avgRadius = fastSqrt(avgRadiusSquared);
+    const float radiusTolerance = 15.0f; // Tolerance in pixels
+    bool allPointsWithinTolerance = true;
+
+    for (float distSq : squared_distances) {
+        float distance = fastSqrt(distSq);
+        if (std::abs(distance - avgRadius) > radiusTolerance) {
+            allPointsWithinTolerance = false;
+            break; // Exit early if one point is outside tolerance
+        }
+    }
+
+    // bool result = radiusVariance < varianceThresholdSquared; // Old check
+    bool result = allPointsWithinTolerance; // New check based on tolerance
+
+    auto profiler_end = std::chrono::high_resolution_clock::now();
     float profiler_duration = std::chrono::duration<float, std::milli>(profiler_end - profiler_start).count();
-    std::cout << "[Profiler] isCircle Duration: " << profiler_duration << "ms" << std::endl;
+    
+    // Log final result with test case ID
+    if (m_logFile.is_open()) {
+        auto now = std::chrono::system_clock::now();
+        auto time = std::chrono::system_clock::to_time_t(now);
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
+        
+        std::tm timeInfo;
+        localtime_s(&timeInfo, &time);
+        std::stringstream ss;
+        ss << "[" << std::put_time(&timeInfo, "%Y-%m-%d %H:%M:%S") 
+           << "." << std::setfill('0') << std::setw(3) << ms.count() << "] "
+           << "[Profiler] isCircle Result: " << (result ? "true" : "false") 
+           << ", Duration: " << profiler_duration << " ms" << std::endl;
+        
+        m_logFile << ss.str();
+    }
 
     return result;
 }
@@ -686,8 +860,10 @@ float GestureRecognizer::getGestureThreshold(GestureType type) const {
         return m_gestureThresholds.at(type);
     }
     // Return default minimum if specific threshold not found
-    return m_minConfidence; 
+    return m_minConfidence;
 }
+
+float GestureRecognizer::getCircleClosureThreshold() const { return m_circleClosureThreshold; }
 
 } // namespace CSL
 } // namespace TurtleEngine 

@@ -61,18 +61,22 @@ public:
     float getGestureThreshold(GestureType type) const;
 
     // Add for test simulation
-    GestureResult processSimulatedPoints(const std::vector<cv::Point2f>& points);
+    GestureResult processSimulatedPoints(const std::vector<cv::Point2f>& points, const std::string& testCaseId = "Unknown");
+
+    // Circle closure threshold methods
+    void setCircleClosureThreshold(float threshold);
+    float getCircleClosureThreshold() const;
 
 private:
     // Internal gesture recognition methods
     GestureResult recognizeKhargail(const std::vector<cv::Point2f>& points);
     GestureResult recognizeFlammil(const std::vector<cv::Point2f>& points);
-    GestureResult recognizeStasai(const std::vector<cv::Point2f>& points);
+    GestureResult recognizeStasai(const std::vector<cv::Point2f>& points, const std::string& testCaseId);
     GestureResult recognizeAnnihlat(const std::vector<cv::Point2f>& points);
 
     // Helper methods
     float calculateSwipeConfidence(const std::vector<cv::Point2f>& points, const cv::Point2f& direction);
-    bool isCircle(const std::vector<cv::Point2f>& points);
+    bool isCircle(const std::vector<cv::Point2f>& points, const std::string& testCaseId = "Unknown");
     void updateTransitionStats(const GestureResult& current, const GestureResult& previous);
     void logGestureResult(const GestureResult& result);
 
@@ -81,11 +85,13 @@ private:
     float m_minConfidence;
     std::vector<cv::Point2f> m_previousPoints;
     GestureResult m_lastGesture;
+    GestureResult m_lastRecognizedGesture;
     ComboTransition m_lastTransition;
     float m_averageTransitionLatency;
     std::chrono::high_resolution_clock::time_point m_lastGestureTime;
     bool m_initialized;
     std::ofstream m_logFile; // Uncommented
+    float m_circleClosureThreshold; // Added circle closure threshold
     
     // New member variables for gesture-specific tracking
     std::map<GestureType, float> m_gestureThresholds;

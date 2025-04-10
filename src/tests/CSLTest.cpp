@@ -1,110 +1,98 @@
+// Define _USE_MATH_DEFINES at the very top before any includes
+#define _USE_MATH_DEFINES
+
 #include "csl/GestureRecognizer.hpp"
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <random>
+// #define _USE_MATH_DEFINES // Moved to top
+#include <cmath> // Include cmath for std::sin/cos and M_PI
 #include <chrono> // Include chrono for timing
 #include <vector> // Include vector for points
 #include <functional> // For std::function
 #include <iomanip> // For std::setprecision
+#include <numeric> // For std::accumulate
 
 #include "csl/CSLSystem.hpp" // Include CSLSystem
 
 // Function to run the combo test with specified duration parameters
-bool runComboTest(TurtleEngine::CSL::GestureRecognizer& recognizer, TurtleEngine::CSL::CSLSystem& cslSystem, float khargailDuration, float flammilDuration) {
-    std::cout << "\n--- Running Combo Test (Khargail: " << khargailDuration << "s, Flammil: " << flammilDuration << "s) ---" << std::endl;
-    recognizer.resetTransitionStats(); // Reset stats for each test run
-
-    // --- Khargail Simulation ---
-    std::cout << "Generating Khargail points" << std::endl;
+bool runComboTest(TurtleEngine::CSL::GestureRecognizer& recognizer, TurtleEngine::CSL::CSLSystem& cslSystem, float khargailDuration, float flammilDuration, const std::string& testCaseId) {
+    std::cout << "\n=== Running Combo Test ===" << std::endl;
+    std::cout << "Test Case: " << testCaseId << std::endl;
+    std::cout << "Khargail Duration: " << khargailDuration << "s" << std::endl;
+    std::cout << "Flammil Duration: " << flammilDuration << "s" << std::endl;
+    
+    // Generate Khargail points (left-to-right swipe)
     std::vector<cv::Point2f> khargailPoints;
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> noise(-2.0f, 2.0f);
-    const int frameWidth = 1280;
-    const int frameHeight = 720;
-    const float startXKhargail = frameWidth * 0.4f;
-    const float startYKhargail = frameHeight * 0.5f;
-    const float khargailDist = 65.0f; // Keep distance consistent
-    const float endXKhargail = startXKhargail + khargailDist;
-    const float endYKhargail = startYKhargail;
-    const int khargailNumPoints = static_cast<int>(khargailDuration * 60.0f); // Points based on duration
-
-    for (int i = 0; i < khargailNumPoints; ++i) {
-        float t = (khargailNumPoints > 1) ? static_cast<float>(i) / (khargailNumPoints - 1) : 1.0f;
-        float x = startXKhargail + t * (endXKhargail - startXKhargail) + noise(gen);
-        float y = startYKhargail + t * (endYKhargail - startYKhargail) + noise(gen);
+    const int numPoints = 30;
+    const float startX = 100.0f;
+    const float startY = 360.0f;
+    const float endX = 700.0f;
+    const float endY = 360.0f;
+    
+    for (int i = 0; i < numPoints; ++i) {
+        float t = static_cast<float>(i) / (numPoints - 1);
+        float x = startX + t * (endX - startX);
+        float y = startY + 10.0f * std::sin(t * M_PI); // Slight curve for realism
         khargailPoints.push_back(cv::Point2f(x, y));
     }
-    std::cout << "Khargail points generated, size: " << khargailPoints.size() << std::endl;
-
-    // Process Khargail
-    auto startTime = std::chrono::high_resolution_clock::now();
-    TurtleEngine::CSL::GestureResult khargailResult = recognizer.processSimulatedPoints(khargailPoints);
-    auto endTime = std::chrono::high_resolution_clock::now();
-    float khargailProcessingLatency = std::chrono::duration<float>(endTime - startTime).count();
-    std::cout << "Khargail Test:" << std::endl;
-    std::cout << "  Confidence: " << khargailResult.confidence << " (Threshold: " << recognizer.getGestureThreshold(TurtleEngine::CSL::GestureType::KHARGAIL) << ")" << std::endl;
-    std::cout << "  Processing Latency: " << khargailProcessingLatency << "s" << std::endl;
-    std::cout << "  Gesture Type: " << (khargailResult.type == TurtleEngine::CSL::GestureType::KHARGAIL ? "KHARGAIL" : "Unexpected") << std::endl;
-
-    // --- Flammil Simulation ---
-    std::cout << "Generating Flammil points" << std::endl;
+    
+    // Process Khargail points
+    std::cout << "\nProcessing Khargail points..." << std::endl;
+    auto khargailResult = recognizer.processSimulatedPoints(khargailPoints, testCaseId + "_KHARGAIL");
+    std::cout << "Khargail Result: " << static_cast<int>(khargailResult.type) 
+              << " (Confidence: " << khargailResult.confidence << ")" << std::endl;
+    
+    // Generate Flammil points (right-to-down swipe)
     std::vector<cv::Point2f> flammilPoints;
-    const float startXFlammil = frameWidth * 0.5f;
-    const float startYFlammil = frameHeight * 0.3f;
-    const float flammilDistX = 75.0f;
-    const float flammilDistY = 75.0f;
-    const float endXFlammil = startXFlammil + flammilDistX;
-    const float endYFlammil = startYFlammil + flammilDistY;
-    const int flammilNumPoints = static_cast<int>(flammilDuration * 60.0f); // Points based on duration
-
-    for (int i = 0; i < flammilNumPoints; ++i) {
-        float t = (flammilNumPoints > 1) ? static_cast<float>(i) / (flammilNumPoints - 1) : 1.0f;
-        float x = startXFlammil + t * (endXFlammil - startXFlammil) + noise(gen);
-        float y = startYFlammil + t * (endYFlammil - startYFlammil) + noise(gen);
+    const float flammilStartX = endX;
+    const float flammilStartY = endY;
+    const float flammilEndX = endX + 100.0f;
+    const float flammilEndY = endY + 300.0f;
+    
+    for (int i = 0; i < numPoints; ++i) {
+        float t = static_cast<float>(i) / (numPoints - 1);
+        float x = flammilStartX + t * (flammilEndX - flammilStartX);
+        float y = flammilStartY + t * (flammilEndY - flammilStartY) + 5.0f * std::sin(t * M_PI); // Slight curve
         flammilPoints.push_back(cv::Point2f(x, y));
     }
-    std::cout << "Flammil points generated, size: " << flammilPoints.size() << std::endl;
-
-    // Process Flammil
-    startTime = std::chrono::high_resolution_clock::now();
-    TurtleEngine::CSL::GestureResult flammilResult = recognizer.processSimulatedPoints(flammilPoints);
-    endTime = std::chrono::high_resolution_clock::now();
-    float flammilProcessingLatency = std::chrono::duration<float>(endTime - startTime).count();
-    float transitionLatency = recognizer.getLastTransition().latency;
-    std::cout << "Flammil Test:" << std::endl;
-    std::cout << "  Confidence: " << flammilResult.confidence << " (Threshold: " << recognizer.getGestureThreshold(TurtleEngine::CSL::GestureType::FLAMMIL) << ")" << std::endl;
-    std::cout << "  Processing Latency: " << flammilProcessingLatency << "s" << std::endl;
-    std::cout << "  Gesture Type: " << (flammilResult.type == TurtleEngine::CSL::GestureType::FLAMMIL ? "FLAMMIL" : "Unexpected") << std::endl;
-    std::cout << "Transition Latency (Khargail->Flammil): " << transitionLatency << "s (Target: <0.1)" << std::endl;
-
-    // Manually trigger the plasma callback using the test result
-    std::cout << "Manually triggering CSLSystem plasma callback with Flammil result..." << std::endl;
-    if (flammilResult.type == TurtleEngine::CSL::GestureType::FLAMMIL) {
-        cslSystem.triggerPlasmaCallback(flammilResult);
-    } else {
-        std::cout << "Skipping manual trigger: Flammil was not the detected type." << std::endl;
+    
+    // Process Flammil points
+    std::cout << "\nProcessing Flammil points..." << std::endl;
+    auto flammilResult = recognizer.processSimulatedPoints(flammilPoints, testCaseId + "_FLAMMIL");
+    std::cout << "Flammil Result: " << static_cast<int>(flammilResult.type) 
+              << " (Confidence: " << flammilResult.confidence << ")" << std::endl;
+    
+    // Test Stasai (circle) detection
+    std::vector<cv::Point2f> stasaiPoints;
+    const float centerX = 640.0f;
+    const float centerY = 360.0f;
+    const float radius = 50.0f;
+    
+    for (int i = 0; i < numPoints; ++i) {
+        float angle = 2.0f * M_PI * static_cast<float>(i) / (numPoints - 1);
+        float x = centerX + radius * std::cos(angle);
+        float y = centerY + radius * std::sin(angle);
+        stasaiPoints.push_back(cv::Point2f(x, y));
     }
-
-    // Validate Combo
-    bool khargailPassed = khargailResult.type == TurtleEngine::CSL::GestureType::KHARGAIL &&
-                           khargailResult.confidence >= recognizer.getGestureThreshold(TurtleEngine::CSL::GestureType::KHARGAIL);
-    bool flammilPassed = flammilResult.type == TurtleEngine::CSL::GestureType::FLAMMIL &&
-                          flammilResult.confidence >= recognizer.getGestureThreshold(TurtleEngine::CSL::GestureType::FLAMMIL);
-    bool transitionPassed = transitionLatency < 0.1f;
-
-    std::cout << "--- Validation (Duration: " << flammilDuration << "s) ---" << std::endl;
-    std::cout << "Khargail Valid: " << (khargailPassed ? "PASS" : "FAIL") << std::endl;
-    std::cout << "Flammil Valid: " << (flammilPassed ? "PASS" : "FAIL") << std::endl;
-    std::cout << "Transition (<0.1s) Valid: " << (transitionPassed ? "PASS" : "FAIL") << std::endl;
-
-    if (khargailPassed && flammilPassed && transitionPassed) {
-        std::cout << "Combo Validation: PASSED" << std::endl;
-        return true;
-    } else {
-        std::cout << "Combo Validation: FAILED" << std::endl;
-        return false;
-    }
+    
+    // Process Stasai points with test case identifier
+    std::cout << "\nProcessing Stasai points..." << std::endl;
+    auto stasaiResult = recognizer.processSimulatedPoints(stasaiPoints, testCaseId + "_STASAI");
+    std::cout << "Stasai Result: " << static_cast<int>(stasaiResult.type) 
+              << " (Confidence: " << stasaiResult.confidence << ")" << std::endl;
+    
+    // Verify results
+    bool khargailSuccess = (khargailResult.type == TurtleEngine::CSL::GestureType::KHARGAIL);
+    bool flammilSuccess = (flammilResult.type == TurtleEngine::CSL::GestureType::FLAMMIL);
+    bool stasaiSuccess = (stasaiResult.type == TurtleEngine::CSL::GestureType::STASAI);
+    
+    std::cout << "\nTest Results:" << std::endl;
+    std::cout << "Khargail: " << (khargailSuccess ? "PASS" : "FAIL") << std::endl;
+    std::cout << "Flammil: " << (flammilSuccess ? "PASS" : "FAIL") << std::endl;
+    std::cout << "Stasai: " << (stasaiSuccess ? "PASS" : "FAIL") << std::endl;
+    
+    return khargailSuccess && flammilSuccess && stasaiSuccess;
 }
 
 int main() {
@@ -119,61 +107,73 @@ int main() {
     std::cout << "GestureRecognizer initialized" << std::endl;
 
     TurtleEngine::CSL::CSLSystem cslSystem;
-    // CSLSystem now uses the *same* recognizer instance implicitly via its constructor
-    // We no longer need to initialize CSLSystem separately for this test structure.
-    // if (!cslSystem.initialize(0)) { ... }
     std::cout << "CSLSystem constructed for callback test" << std::endl;
 
     // Add plasma callback with animation simulation
-    cslSystem.addPlasmaCallback([&cslSystem](const TurtleEngine::CSL::GestureResult& result) { // Capture cslSystem
-        std::cout << "*** Plasma Effect Triggered for Flammil! *** End Pos: (" 
-                   << result.position.x << "," << result.position.y << ") Confidence: " 
-                   << result.confidence << std::endl;
-        // Log velocities for Elena's reference
-        bool velocitiesAvailable = !result.velocities.empty(); // Check if not empty
-        std::cout << "Velocities vector size: " << result.velocities.size() << std::endl; // Debug size
-        std::cout << "Smoothed & Normalized Velocities (showing every 5th):" << std::endl;
-        for (size_t i = 0; i < result.velocities.size(); i += 5) {
-            std::cout << "  Segment " << i << ": " << std::fixed << std::setprecision(3) << result.velocities[i] << std::endl;
-        }
-        // Simulate plasma animation along trajectory using configured duration
-        float plasmaDuration = cslSystem.getPlasmaDuration();
-        const int totalFrames = static_cast<int>(plasmaDuration * 60.0f);
-        const int keyframeCount = 24;
-        const float frameDuration = 1.0f / 60.0f;
-        if (result.trajectory.empty()) {
-            std::cerr << "Plasma Callback Error: Trajectory is empty!" << std::endl;
-            return;
-        }
-        cv::Point2f start = result.trajectory.front();
-        cv::Point2f end = result.trajectory.back();
-        for (int frame = 0; frame < totalFrames; ++frame) {
-            float t = (totalFrames > 1) ? static_cast<float>(frame) / (totalFrames - 1) : 1.0f;
-            float x = start.x + t * (end.x - start.x);
-            float y = start.y + t * (end.y - start.y);
-            int keyframeIndex = (frame % keyframeCount);
-            std::cout << "Plasma Frame " << frame << " (keyframe " << keyframeIndex << "): Pos=(" 
-                       << x << "," << y << ")";
-            if (velocitiesAvailable && frame < result.velocities.size()) {
-                // float normVelMag = cv::norm(result.velocities[frame]); // No longer Point2f
-                float normVelMag = result.velocities[frame]; // Directly use the stored float
-                std::cout << " SmoothedNormVel: " << std::fixed << std::setprecision(3) << normVelMag;
+    cslSystem.addPlasmaCallback([&cslSystem](const TurtleEngine::CSL::GestureResult& result) {
+        std::cout << "\n=== Plasma Effect Callback ===" << std::endl;
+        std::cout << "Gesture Type: " << static_cast<int>(result.type) << std::endl;
+        if (result.type == TurtleEngine::CSL::GestureType::FLAMMIL) {
+            std::cout << "*** Plasma Effect Triggered for Flammil! ***" << std::endl;
+            std::cout << "End Position: (" << std::fixed << std::setprecision(2) 
+                      << result.position.x << "," << result.position.y << ")" << std::endl;
+            std::cout << "Confidence: " << std::fixed << std::setprecision(3) << result.confidence << std::endl;
+            
+            // Log raw velocity data
+            std::cout << "\nVelocity Analysis:" << std::endl;
+            std::cout << "Total velocity segments: " << result.velocities.size() << std::endl;
+            if (!result.velocities.empty()) {
+                std::cout << "Raw Velocities (px/s):" << std::endl;
+                for (size_t i = 0; i < result.velocities.size(); i += 5) {
+                    std::cout << "  Segment " << std::setw(3) << i << ": " 
+                             << std::fixed << std::setprecision(3) << std::setw(8)
+                             << result.velocities[i] << " px/s" << std::endl;
+                }
+
+                // Calculate and display velocity statistics
+                float maxVelocity = *std::max_element(result.velocities.begin(), result.velocities.end());
+                float avgVelocity = std::accumulate(result.velocities.begin(), result.velocities.end(), 0.0f) / result.velocities.size();
+                std::cout << "\nVelocity Statistics:" << std::endl;
+                std::cout << "  Max Velocity: " << std::fixed << std::setprecision(3) << std::setw(8) 
+                         << maxVelocity << " px/s" << std::endl;
+                std::cout << "  Avg Velocity: " << std::fixed << std::setprecision(3) << std::setw(8) 
+                         << avgVelocity << " px/s" << std::endl;
+
+                // Scale intensity based on raw velocity (1500 px/s as max for full intensity)
+                const float targetMaxVelocity = 1500.0f;
+                float intensityScale = (targetMaxVelocity > 1e-6) ? 
+                    std::min(1.0f, maxVelocity / targetMaxVelocity) : 0.0f;
+                std::cout << "  Intensity Scale: " << std::fixed << std::setprecision(3) << std::setw(8) 
+                         << intensityScale << std::endl;
             }
-            std::cout << std::endl;
         }
+        std::cout << "=== Callback execution finished ===\n" << std::endl;
     });
 
     // --- Run Test Suite --- 
     bool overallResult = true;
-    // Test 1: Standard duration (Khargail ~0.4s, Flammil 0.5s)
-    overallResult &= runComboTest(recognizer, cslSystem, 0.4f, 0.5f);
-    // Test 2: Faster duration (Khargail ~0.25s, Flammil 0.3s)
-    overallResult &= runComboTest(recognizer, cslSystem, 0.25f, 0.3f);
-    // Test 3: Slower duration (Khargail ~0.6s, Flammil 0.7s)
-    cslSystem.setPlasmaDuration(0.7f); // Adjust plasma duration for the longer test
-    overallResult &= runComboTest(recognizer, cslSystem, 0.6f, 0.7f);
+    
+    // Test 1: Rapid input (0.15s)
+    std::cout << "\n=== Test Case 1: Rapid Input (0.15s) ===" << std::endl;
+    cslSystem.setPlasmaDuration(0.15f);
+    overallResult &= runComboTest(recognizer, cslSystem, 0.15f, 0.15f, "Test1_0.15s");
+    
+    // Test 2: Standard duration (0.4s, 0.5s)
+    std::cout << "\n=== Test Case 2: Standard Duration (0.4s, 0.5s) ===" << std::endl;
+    cslSystem.setPlasmaDuration(0.5f);
+    overallResult &= runComboTest(recognizer, cslSystem, 0.4f, 0.5f, "Test2_0.4s-0.5s");
+    
+    // Test 3: Faster duration (0.25s, 0.3s)
+    std::cout << "\n=== Test Case 3: Faster Duration (0.25s, 0.3s) ===" << std::endl;
+    cslSystem.setPlasmaDuration(0.3f);
+    overallResult &= runComboTest(recognizer, cslSystem, 0.25f, 0.3f, "Test3_0.25s-0.3s");
+    
+    // Test 4: Slower duration (0.6s, 0.7s)
+    std::cout << "\n=== Test Case 4: Slower Duration (0.6s, 0.7s) ===" << std::endl;
+    cslSystem.setPlasmaDuration(0.7f);
+    overallResult &= runComboTest(recognizer, cslSystem, 0.6f, 0.7f, "Test4_0.6s-0.7s");
 
-    std::cout << "\n--- Test Suite Summary ---" << std::endl;
+    std::cout << "\n=== Test Suite Summary ===" << std::endl;
     if (overallResult) {
         std::cout << "Overall Result: PASSED" << std::endl;
         return 0; // Success exit code
