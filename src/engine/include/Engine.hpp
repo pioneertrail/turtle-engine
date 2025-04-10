@@ -1,12 +1,23 @@
 #pragma once
 
-<<<<<<< HEAD
-#include "Window.hpp"
-#include "Renderer.hpp"
-#include "InputManager.hpp"
-#include <glm/glm.hpp>
-#include <chrono>
-#include <deque>
+#include <memory>
+#include <string>
+#include <vector>
+#include <chrono> 
+#include <fstream> // For file logging
+#include <stdexcept> // For runtime_error in getter
+
+struct GLFWwindow; // Forward declare
+namespace glm { struct vec3; struct mat4; } // Forward declare
+
+// Forward declarations for engine components
+namespace TurtleEngine {
+    class Grid;
+    class Shader;
+    class ParticleSystem;
+    namespace CSL { class CSLSystem; struct GestureResult; }
+    namespace Combat { class ComboManager; struct ComboSequence; }
+}
 
 namespace TurtleEngine {
 
@@ -44,7 +55,9 @@ public:
      * @param height The window height in pixels
      * @return true if initialization was successful, false otherwise
      */
-    bool initialize(const std::string& title, int width, int height);
+    bool initialize(const std::string& windowTitle = "TurtleEngine", 
+                   int width = 800, 
+                   int height = 600);
 
     /**
      * @brief Starts the main game loop.
@@ -60,173 +73,64 @@ public:
      * Deletes the window, renderer, and input manager instances.
      */
     void shutdown();
-    
-private:
-    /**
-     * @brief Processes input and updates game state accordingly.
-     * 
-     * Handles keyboard input for:
-     * - WASD: Triangle movement
-     * - RGB: Color changes
-     * - +/-: Size adjustment
-     * - Tab: Toggle performance metrics
-     */
-    void handleInput();
 
-    /**
-     * @brief Updates the triangle's position, keeping it within screen bounds.
-     */
-    void updateTriangle();
-
-    /**
-     * @brief Renders the current frame using the renderer.
-     */
-    void render();
-
-    /**
-     * @brief Updates performance metrics for the current frame.
-     * 
-     * Calculates frame time and maintains a history of the last
-     * MAX_FRAME_SAMPLES frames for statistical analysis.
-     */
-    void updatePerformanceMetrics();
-
-    /**
-     * @brief Displays current performance metrics in the console.
-     * 
-     * Shows FPS and frame time statistics (average, min, max).
-     */
-    void displayPerformanceMetrics();
-
-    // Core components
-    Window* window;           ///< Window management
-    Renderer* renderer;       ///< OpenGL rendering
-    InputManager* inputManager; ///< Input handling
-
-    // Triangle state
-    glm::vec2 trianglePos;    ///< Position in normalized device coordinates
-    glm::vec4 triangleColor;  ///< RGBA color values
-    float triangleSpeed;      ///< Movement speed per frame
-    float triangleSize;       ///< Size in normalized device coordinates
-
-    // Performance metrics
-    std::chrono::high_resolution_clock::time_point lastFrameTime; ///< Timestamp of last frame
-    std::deque<float> frameTimesMs;  ///< History of frame times in milliseconds
-    int frameCount;                  ///< Total number of frames rendered
-    float avgFrameTimeMs;           ///< Average frame time in milliseconds
-    float minFrameTimeMs;           ///< Minimum frame time in milliseconds
-    float maxFrameTimeMs;           ///< Maximum frame time in milliseconds
-    float currentFPS;               ///< Current frames per second
-    bool showMetrics;               ///< Whether to display performance metrics
-    static constexpr int MAX_FRAME_SAMPLES = 120;  ///< Maximum number of frame time samples to keep
-};
-
-} // namespace TurtleEngine 
-=======
-#include <memory>
-#include <string>
-#include <vector>
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
-#include "Grid.hpp"
-#include "Shader.hpp"
-#include "csl/CSLSystem.hpp"
-#include "csl/GestureRecognizer.hpp"
-#include "combat/Combo.hpp"
-#include "ParticleSystem.hpp"
-#include <mutex>
-// Forward declare CSLSystem to avoid full include here if possible
-// #include "csl/CSLSystem.hpp" 
-
-namespace TurtleEngine {
-    namespace CSL { class CSLSystem; } // Forward declaration
-    struct GestureResult; // Forward declaration for callback type
-    namespace Combat { // Assuming ComboManager is in Combat namespace based on file path
-        class ComboManager;
-        struct ComboSequence; // Needed for constructor/member type
-    }
-}
-
-namespace TurtleEngine {
-
-class Engine {
-public:
-    Engine();
-    ~Engine();
-
-    // Initialize the engine with hardware-aware settings
-    bool initialize(const std::string& windowTitle = "TurtleEngine", 
-                   int width = 800, 
-                   int height = 600);
-
-    // Main loop
-    void run();
-
-    // Cleanup
-    void shutdown();
-
-    // Set the CSL System instance
     void setCSLSystem(CSL::CSLSystem* sys);
 
-private:
-    // Callback handler for Flammyx gestures
-    void handleFlammyxGesture(const CSL::GestureResult& result);
+    // --- Methods for test automation --- 
+    void simulateKeyPress(char key);
+    ParticleSystem& getParticleSystem() { 
+        if (!m_particleSystem) { 
+            throw std::runtime_error("ParticleSystem not initialized!"); 
+        }
+        return *m_particleSystem; 
+    }
+    void update(float deltaTime);
+    // --- End Test Methods --- 
 
-    // Hardware detection and configuration
+private:
+    void onGestureRecognized(const CSL::GestureResult& result);
+    bool initGL(); 
     void detectHardwareCapabilities();
     void configureOpenGLContext();
     void processInput();
-    void updateCamera();
+    void updateCamera(); 
 
-    // Callback for CSL gesture results
-    void onGestureRecognized(const CSL::GestureResult& result);
+    // Helper for robust file logging
+    void logToFile(const std::string& message);
 
     // Core components
-    GLFWwindow* m_window;
-    bool m_isRunning;
+    GLFWwindow* m_window = nullptr;
+    bool m_isRunning = false;
     std::unique_ptr<CSL::CSLSystem> m_cslSystem;
-    std::unique_ptr<ComboManager> m_comboManager;
-    std::vector<ComboSequence> m_definedCombos;
+    std::unique_ptr<Combat::ComboManager> m_comboManager;
+    std::vector<Combat::ComboSequence> m_definedCombos;
     std::unique_ptr<ParticleSystem> m_particleSystem;
-    
-    // Camera
-    struct {
-        glm::vec3 position;
-        glm::vec3 target;
-        glm::vec3 up;
-        float yaw;
-        float pitch;
-        float distance;
-    } m_camera;
-
-    // Grid
     std::unique_ptr<Grid> m_grid;
-
-    // Flammyx Effect Rendering
-    Shader m_flammyxShader;
-    GLuint m_flammyxVao = 0;
-    GLuint m_flammyxVbo = 0;
-    size_t m_flammyxPointCount = 0;
-    float m_flammyxDuration = 0.0f;
-    std::mutex m_flammyxMutex;
     
-    // Hardware info
-    struct {
-        int maxTextureSize;
-        int maxUniformComponents;
-        int maxVertexAttributes;
+    struct Camera { // Simplified definition
+        glm::vec3 position {0.0f, 5.0f, 15.0f};
+        glm::vec3 target {0.0f, 0.0f, 0.0f}; 
+        glm::vec3 up {0.0f, 1.0f, 0.0f};
+        float yaw {-90.0f};
+        float pitch { -20.0f};
+        float distance {15.0f};
+    } m_camera;
+    
+    struct HardwareInfo { // Simplified definition
+        int maxTextureSize = 0;
+        int maxUniformComponents = 0;
+        int maxVertexAttributes = 0;
         std::string glVersion;
         std::string glVendor;
         std::string glRenderer;
     } m_hardwareInfo;
 
-    // Performance monitoring
-    struct {
-        double frameTime;
-        int fps;
-        double lastFrameTime;
+    struct PerformanceMetrics { // Simplified definition
+        double lastFrameTime = 0.0;
+        double deltaTime = 0.0;
     } m_performance;
+
+    std::ofstream m_debugLog; // Debug log file stream
 };
-} 
->>>>>>> feature/step2-latency-opt
+
+} // namespace TurtleEngine 
