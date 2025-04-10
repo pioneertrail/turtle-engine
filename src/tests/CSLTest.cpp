@@ -132,12 +132,9 @@ int main() {
         // Log velocities for Elena's reference
         bool velocitiesAvailable = !result.velocities.empty(); // Check if not empty
         std::cout << "Velocities vector size: " << result.velocities.size() << std::endl; // Debug size
-        for (size_t i = 0; i < result.velocities.size(); ++i) {
-            if (i % 5 == 0) { // Log every 5th velocity for brevity
-                // result.velocities[i] is now the normalized magnitude (float)
-                std::cout << "Normalized Velocity at segment " << i << ": " 
-                          << std::fixed << std::setprecision(3) << result.velocities[i] << std::endl;
-            }
+        std::cout << "Smoothed & Normalized Velocities (showing every 5th):" << std::endl;
+        for (size_t i = 0; i < result.velocities.size(); i += 5) {
+            std::cout << "  Segment " << i << ": " << std::fixed << std::setprecision(3) << result.velocities[i] << std::endl;
         }
         // Simulate plasma animation along trajectory using configured duration
         float plasmaDuration = cslSystem.getPlasmaDuration();
@@ -160,7 +157,7 @@ int main() {
             if (velocitiesAvailable && frame < result.velocities.size()) {
                 // float normVelMag = cv::norm(result.velocities[frame]); // No longer Point2f
                 float normVelMag = result.velocities[frame]; // Directly use the stored float
-                std::cout << " NormVelMag: " << std::fixed << std::setprecision(3) << normVelMag;
+                std::cout << " SmoothedNormVel: " << std::fixed << std::setprecision(3) << normVelMag;
             }
             std::cout << std::endl;
         }

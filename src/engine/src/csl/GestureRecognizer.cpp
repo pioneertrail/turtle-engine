@@ -153,11 +153,9 @@ GestureResult GestureRecognizer::processFrame(const cv::Mat& frame) {
     // Calculate and Normalize Velocities (Placeholder)
     result.velocities.clear();
     if (result.trajectory.size() > 1) {
-        result.velocities.resize(result.trajectory.size() - 1); // Resize for N-1 velocities
-        const float timeStep = 1.0f / 60.0f; // Crude assumption
-        const float maxVelocity = 1000.0f; // Pixels per second (adjust as needed)
-        float maxMagnitudeSq = 0.0f;
         std::vector<float> rawVelocities(result.trajectory.size() - 1);
+        const float timeStep = 1.0f / 60.0f; // Crude assumption
+        float maxMagnitudeSq = 0.0f;
 
         for (size_t i = 0; i < result.trajectory.size() - 1; ++i) {
             cv::Point2f p1 = result.trajectory[i];
@@ -167,16 +165,29 @@ GestureResult GestureRecognizer::processFrame(const cv::Mat& frame) {
             rawVelocities[i] = std::sqrt(velocitySq); // Store raw magnitude
             maxMagnitudeSq = std::max(maxMagnitudeSq, velocitySq);
         }
+        
+        // Apply EMA Smoothing to raw velocities
+        const float alpha = 0.2f; // Smoothing factor (adjust as needed)
+        std::vector<float> smoothedVelocities = rawVelocities;
+        for(size_t i = 1; i < smoothedVelocities.size(); ++i) {
+            smoothedVelocities[i] = alpha * rawVelocities[i] + (1.0f - alpha) * smoothedVelocities[i-1];
+        }
+        
+        // Normalize the SMOOTHED velocities
+        result.velocities.resize(smoothedVelocities.size());
+        float maxSmoothedMagnitude = 0.0f;
+        for(const auto& v : smoothedVelocities) {
+             maxSmoothedMagnitude = std::max(maxSmoothedMagnitude, v);
+        }
 
-        float maxMagnitude = std::sqrt(maxMagnitudeSq);
-        if (maxMagnitude > 1e-6) { // Avoid division by zero
-            std::cout << "Normalizing velocities (max raw magnitude: " << maxMagnitude << " px/s)" << std::endl;
-            for (size_t i = 0; i < rawVelocities.size(); ++i) {
-                result.velocities[i] = rawVelocities[i] / maxMagnitude; // Normalize
+        if (maxSmoothedMagnitude > 1e-6) { 
+            std::cout << "Normalizing smoothed velocities (max smoothed magnitude: " << maxSmoothedMagnitude << " px/s)" << std::endl;
+            for (size_t i = 0; i < smoothedVelocities.size(); ++i) {
+                result.velocities[i] = smoothedVelocities[i] / maxSmoothedMagnitude; // Normalize smoothed
             }
         } else {
-             std::cout << "Velocities not normalized (max magnitude was zero)." << std::endl;
-             std::fill(result.velocities.begin(), result.velocities.end(), 0.0f); // Fill with 0 if max is 0
+             std::cout << "Smoothed velocities not normalized (max magnitude was zero)." << std::endl;
+             std::fill(result.velocities.begin(), result.velocities.end(), 0.0f);
         }
     }
     
@@ -250,32 +261,46 @@ GestureResult GestureRecognizer::processSimulatedPoints(const std::vector<cv::Po
 
     std::cout << "Finished recognition, best result type: " << static_cast<int>(result.type) << " with confidence: " << result.confidence << std::endl;
 
-    // Calculate and Normalize Velocities (Simulation)
+    // Calculate, Smooth, and Normalize Velocities (Simulation)
     result.velocities.clear();
     if (processedPoints.size() > 1) {
-        result.velocities.resize(processedPoints.size() - 1); // Resize for N-1 velocities
-        const float timeStep = 1.0f / 60.0f; // Assume 60 FPS simulation
-        float maxMagnitudeSq = 0.0f; // Use squared magnitude for efficiency
         std::vector<float> rawVelocities(processedPoints.size() - 1);
+        const float timeStep = 1.0f / 60.0f; // Assume 60 FPS simulation
+        float maxMagnitudeSq = 0.0f; 
 
         for (size_t i = 0; i < processedPoints.size() - 1; ++i) {
             cv::Point2f p1 = processedPoints[i];
             cv::Point2f p2 = processedPoints[i+1];
             float distSq = (p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y);
             float velocitySq = distSq / (timeStep * timeStep);
-            rawVelocities[i] = std::sqrt(velocitySq); // Store raw magnitude
+            rawVelocities[i] = std::sqrt(velocitySq); 
             maxMagnitudeSq = std::max(maxMagnitudeSq, velocitySq);
         }
 
-        float maxMagnitude = std::sqrt(maxMagnitudeSq);
-        if (maxMagnitude > 1e-6) { // Avoid division by zero
-            std::cout << "Normalizing velocities (max raw magnitude: " << maxMagnitude << " px/s)" << std::endl;
-            for (size_t i = 0; i < rawVelocities.size(); ++i) {
-                result.velocities[i] = rawVelocities[i] / maxMagnitude; // Normalize
+        // Apply EMA Smoothing to raw velocities
+        const float alpha = 0.2f; // Smoothing factor
+        std::vector<float> smoothedVelocities = rawVelocities;
+        if (!smoothedVelocities.empty()) {
+             for(size_t i = 1; i < smoothedVelocities.size(); ++i) {
+                 smoothedVelocities[i] = alpha * rawVelocities[i] + (1.0f - alpha) * smoothedVelocities[i-1];
+             }
+        }
+       
+        // Normalize the SMOOTHED velocities
+        result.velocities.resize(smoothedVelocities.size());
+        float maxSmoothedMagnitude = 0.0f;
+        for(const auto& v : smoothedVelocities) {
+             maxSmoothedMagnitude = std::max(maxSmoothedMagnitude, v);
+        }
+
+        if (maxSmoothedMagnitude > 1e-6) { 
+            std::cout << "Normalizing smoothed velocities (max smoothed magnitude: " << maxSmoothedMagnitude << " px/s)" << std::endl;
+            for (size_t i = 0; i < smoothedVelocities.size(); ++i) {
+                result.velocities[i] = smoothedVelocities[i] / maxSmoothedMagnitude; // Normalize smoothed
             }
         } else {
-             std::cout << "Velocities not normalized (max magnitude was zero)." << std::endl;
-             std::fill(result.velocities.begin(), result.velocities.end(), 0.0f); // Fill with 0 if max is 0
+             std::cout << "Smoothed velocities not normalized (max magnitude was zero)." << std::endl;
+             std::fill(result.velocities.begin(), result.velocities.end(), 0.0f);
         }
     }
 
