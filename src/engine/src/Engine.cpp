@@ -389,6 +389,14 @@ void Engine::run() {
         float aspectRatio = (fbHeight > 0) ? static_cast<float>(fbWidth) / fbHeight : 1.0f;
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
 
+        // --- Debugging Logs ---
+        GLint currentProgram = 0;
+        glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
+        std::cout << "Shader Program Active (Before Grid/Particles): " << currentProgram << std::endl;
+        std::cout << "View Matrix Diag: [" << view[0][0] << ", " << view[1][1] << ", " << view[2][2] << ", " << view[3][3] << "]" << std::endl;
+        std::cout << "Projection Matrix Diag: [" << projection[0][0] << ", " << projection[1][1] << ", " << projection[2][2] << ", " << projection[3][3] << "]" << std::endl;
+        // --- End Debugging Logs ---
+
         // Render grid if available
         if (m_grid) {
             m_grid->render(view, projection);
