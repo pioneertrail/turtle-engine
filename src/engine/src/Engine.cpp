@@ -399,6 +399,9 @@ void Engine::run() {
         std::cout << "Projection Matrix Diag: [" << projection[0][0] << ", " << projection[1][1] << ", " << projection[2][2] << ", " << projection[3][3] << "]" << std::endl;
         // --- End Debugging Logs ---
 
+        // Log grid pointer state before check
+        std::cout << "  [Engine Run] Checking grid pointer: " << (m_grid ? "Valid" : "NULL") << std::endl; 
+
         // Render grid if available
         if (m_grid) {
             m_grid->render(view, projection);
