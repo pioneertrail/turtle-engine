@@ -348,6 +348,9 @@ void Engine::setCSLSystem(CSL::CSLSystem* sys) {
 
 void Engine::run() {
     while (m_isRunning && !glfwWindowShouldClose(m_window)) {
+        // Log loop entry and window close status
+        std::cout << "[Engine Run] Loop Start. Window Should Close: " << glfwWindowShouldClose(m_window) << std::endl;
+
         auto frameStart = std::chrono::high_resolution_clock::now();
 
         // Frame time calculation
