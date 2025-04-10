@@ -92,14 +92,32 @@ void Grid::createBuffers() {
     glEnableVertexAttribArray(1);
 }
 
-void Grid::render(const glm::mat4& view, const glm::mat4& projection) {
+void Grid::render(const glm::mat4& projection, const glm::mat4& view) {
+    // logToFile("[Grid Render] Entered."); // Removed entry log
+
     m_shader.use();
-    m_shader.setMat4("view", view);
+    
+    // Check shader program validity after use()
+    GLint currentProgram = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
+    // logToFile(std::string("[Grid Render] Shader ID: ") + std::to_string(currentProgram)); // Removed shader ID log
+
+    if (currentProgram == 0) {
+        logToFile("[Grid Render] Error: Shader program is not valid or not bound.");
+        return; // Don't attempt to render without a valid shader
+    }
+
+    glm::mat4 model = glm::mat4(1.0f); // Identity matrix for model
     m_shader.setMat4("projection", projection);
-    m_shader.setMat4("model", glm::mat4(1.0f));
+    m_shader.setMat4("view", view);
+    m_shader.setMat4("model", model);
 
     glBindVertexArray(m_VAO);
+    // logToFile(std::string("[Grid Render] Drawing Elements: mode=GL_TRIANGLES, count=") + // Removed draw log
+    //           std::to_string(m_indices.size()) + ", type=GL_UNSIGNED_INT, indices=0");
     glDrawElements(GL_TRIANGLES, m_width * m_height * 6, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+    glUseProgram(0); // Unbind shader
 }
 
 void Grid::setCellColor(int x, int y, const glm::vec3& color) {

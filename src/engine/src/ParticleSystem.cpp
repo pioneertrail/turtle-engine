@@ -112,10 +112,8 @@ void ParticleSystem::spawnBurst(int count, glm::vec3 origin, float initialSpeed,
 }
 
 void ParticleSystem::update(float deltaTime) {
-    // Log entry with delta time
-    std::cout << "  [ParticleSystem Update] Received deltaTime: " << deltaTime << std::endl;
+    // logToFile(std::string("[ParticleSystem Update] Received deltaTime: ") + std::to_string(deltaTime)); // Removed deltaTime log
 
-    // Reset buffer and active count for this frame
     m_particleBufferData.clear();
     m_activeParticleCount = 0; 
 
@@ -155,8 +153,7 @@ void ParticleSystem::update(float deltaTime) {
         }
     }
 
-    std::cout << "  [ParticleSystem Update] Active particles found: " << m_activeParticleCount 
-              << ". Buffer size (floats): " << m_particleBufferData.size() << std::endl;
+    // logToFile(std::string("[ParticleSystem Update] Active particles after loop: ") + std::to_string(m_activeParticleCount)); // Removed active count log
 
     // Update VBO if there are active particles
     if (m_activeParticleCount > 0) {
@@ -172,7 +169,10 @@ void ParticleSystem::updateBuffers() {
     glBindBuffer(GL_ARRAY_BUFFER, 0); // Unbind
 }
 
-void ParticleSystem::render(const glm::mat4& view, const glm::mat4& projection) {
+void ParticleSystem::render(const glm::mat4& projection, const glm::mat4& view) {
+    // logToFile(std::string("[Particle Render] Entered. Initialized: ") + // Removed entry log
+    //           std::to_string(m_isInitialized) + ", Active Particles: " + std::to_string(m_activeParticleCount));
+
     if (!m_initialized || m_particleBufferData.empty()) return;
 
     // Enable additive blending for sparks (optional)
@@ -187,13 +187,23 @@ void ParticleSystem::render(const glm::mat4& view, const glm::mat4& projection) 
     m_shader.setMat4("model", glm::mat4(1.0f)); // Use identity model matrix for world-space particles
 
     glBindVertexArray(m_VAO);
-    // Draw only the number of active particles currently in the buffer
-    glDrawArrays(GL_POINTS, 0, m_particleBufferData.size() / 7); // 7 floats per particle (vec3 pos + vec4 color)
+    // logToFile(std::string("[Particle Render] Drawing Arrays: mode=GL_POINTS, first=0, count=") + // Removed draw log
+    //          std::to_string(m_activeParticleCount));
+    glDrawArrays(GL_POINTS, 0, m_activeParticleCount); 
     glBindVertexArray(0);
 
     // Restore blend/depth state if changed
     // glDepthMask(GL_TRUE);
     // glDisable(GL_BLEND);
+
+    // Check shader program validity after use()
+    GLint currentProgram = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
+    // logToFile(std::string("[Particle Render] Shader ID: ") + std::to_string(currentProgram)); // Removed shader ID log
+
+    if (currentProgram == 0) {
+        std::cerr << "ERROR::ParticleSystem: Shader program is not valid" << std::endl;
+    }
 }
 
 } // namespace TurtleEngine 

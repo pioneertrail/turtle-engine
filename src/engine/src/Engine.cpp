@@ -106,7 +106,6 @@ void Engine::run() {
             switch (m_automatedTestPhase) {
                 case 0: // Initial Delay
                     if (m_testFrameCounter >= initialDelayFrames) {
-                        logToFile("[AutoTest] Phase 0 complete. Triggering STASAI (A).");
                         m_gestureRecognizer->triggerGesture(CSL::GestureType::STASAI);
                         m_automatedTestPhase = 1;
                         m_testFrameCounter = 0; // Reset counter for next phase
@@ -114,7 +113,6 @@ void Engine::run() {
                     break;
                 case 1: // After STASAI
                     if (m_testFrameCounter >= gestureTriggerDelayFrames) {
-                        logToFile("[AutoTest] Phase 1 complete. Triggering ANNIHLAT (S).");
                         m_gestureRecognizer->triggerGesture(CSL::GestureType::ANNIHLAT);
                         m_automatedTestPhase = 2;
                         m_testFrameCounter = 0;
@@ -122,7 +120,6 @@ void Engine::run() {
                     break;
                 case 2: // After ANNIHLAT
                     if (m_testFrameCounter >= gestureTriggerDelayFrames) {
-                        logToFile("[AutoTest] Phase 2 complete. Triggering FLAMMIL (F).");
                         m_gestureRecognizer->triggerGesture(CSL::GestureType::FLAMMIL);
                         m_automatedTestPhase = 3;
                         m_testFrameCounter = 0;
@@ -130,7 +127,6 @@ void Engine::run() {
                     break;
                 case 3: // After FLAMMIL
                     if (m_testFrameCounter >= finalDelayFrames) {
-                         logToFile("[AutoTest] Phase 3 complete. Test finished. Closing window.");
                          std::cout << "RENDER_CHECK_SUCCESS" << std::endl; // Signal completion for external check
                          window->setShouldClose(true); // Request window close
                          m_automatedTestPhase = 4; // Move to final phase
@@ -148,7 +144,6 @@ void Engine::run() {
         // Update systems regardless of mode
         updateCamera(); // Update camera based on state/input
         m_gestureRecognizer->update(); // Update Gesture Recognizer
-        logToFile(std::string("[Engine Update] DeltaTime: ") + std::to_string(m_performance.deltaTime));
         m_particleSystem->update(static_cast<float>(m_performance.deltaTime));
 
         // --- Rendering ---
@@ -160,11 +155,6 @@ void Engine::run() {
                                                 (float)800 / (float)600, 0.1f, 100.0f);
         glm::mat4 view = glm::lookAt(m_camera.position, m_camera.target, m_camera.up);
 
-        // Log shader status BEFORE grid/particles
-        GLint currentProgram = 0;
-        glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
-        logToFile(std::string("Shader Program Active (Before Grid/Particles): ") + std::to_string(currentProgram));
-        
         // Render Grid
         if (m_grid) {
             m_grid->render(projection, view);
@@ -233,7 +223,7 @@ void Engine::processInput() {
     static bool tabPressedLastFrame = false;
     bool tabPressedThisFrame = inputManager->isKeyPressed(GLFW_KEY_TAB);
     if (tabPressedThisFrame && !tabPressedLastFrame) {
-       logToFile("Tab key toggled (Manual)."); 
+       // logToFile("Tab key toggled (Manual)."); // Removed debug log 
     }
     tabPressedLastFrame = tabPressedThisFrame;
 
@@ -244,19 +234,19 @@ void Engine::processInput() {
 
     // Manual gesture triggers (remain gated by m_automatedTestMode check above)
     if (inputManager->isKeyPressed(GLFW_KEY_A)) {
-        logToFile("A key pressed (Manual), triggering Stasai gesture.");
+        // logToFile("A key pressed (Manual), triggering Stasai gesture."); // Removed debug log
         m_gestureRecognizer->triggerGesture(CSL::GestureType::STASAI);
     }
     if (inputManager->isKeyPressed(GLFW_KEY_S)) {
-        logToFile("S key pressed (Manual), triggering Annihlat gesture.");
+        // logToFile("S key pressed (Manual), triggering Annihlat gesture."); // Removed debug log
         m_gestureRecognizer->triggerGesture(CSL::GestureType::ANNIHLAT);
     }
     if (inputManager->isKeyPressed(GLFW_KEY_F)) {
-        logToFile("F key pressed (Manual), triggering Flammil gesture.");
+        // logToFile("F key pressed (Manual), triggering Flammil gesture."); // Removed debug log
         m_gestureRecognizer->triggerGesture(CSL::GestureType::FLAMMIL);
     }
     if (inputManager->isKeyPressed(GLFW_KEY_N)) {
-        logToFile("N key pressed (Manual), triggering None gesture.");
+        // logToFile("N key pressed (Manual), triggering None gesture."); // Removed debug log
         m_gestureRecognizer->triggerGesture(CSL::GestureType::NONE);
     }
 }
