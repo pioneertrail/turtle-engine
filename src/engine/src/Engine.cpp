@@ -144,14 +144,14 @@ void Engine::handleInput() {
     }
 
     // Add STASAI gesture trigger
-    if (inputManager->isKeyPressed(GLFW_KEY_G)) {
-        logToFile("G key pressed, triggering Stasai gesture.");
+    if (inputManager->isKeyPressed(GLFW_KEY_A)) {
+        logToFile("A key pressed, triggering Stasai gesture.");
         m_gestureRecognizer->triggerGesture(CSL::GestureType::STASAI);
     }
 
     // Add ANNIHLAT gesture trigger
-    if (inputManager->isKeyPressed(GLFW_KEY_H)) {
-        logToFile("H key pressed, triggering Annihlat gesture.");
+    if (inputManager->isKeyPressed(GLFW_KEY_S)) {
+        logToFile("S key pressed, triggering Annihlat gesture.");
         m_gestureRecognizer->triggerGesture(CSL::GestureType::ANNIHLAT);
     }
 
