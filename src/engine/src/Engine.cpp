@@ -370,6 +370,8 @@ void Engine::run() {
         // --- Start Particle Update Timing ---
         auto particleUpdateStart = std::chrono::high_resolution_clock::now();
         if (m_particleSystem) {
+            // Log deltaTime passed to update
+            std::cout << "  [Engine Run] Passing deltaTime to ParticleSystem::update: " << static_cast<float>(currentFrameTime) << std::endl;
             m_particleSystem->update(static_cast<float>(currentFrameTime)); // Use calculated delta time
         }
         auto particleUpdateEnd = std::chrono::high_resolution_clock::now();

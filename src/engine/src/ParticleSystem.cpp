@@ -99,6 +99,9 @@ void ParticleSystem::spawnBurst(int count, glm::vec3 origin, float initialSpeed,
 void ParticleSystem::update(float deltaTime) {
     if (!m_initialized) return;
 
+    // Log received deltaTime
+    std::cout << "    [ParticleSystem Update] Received deltaTime: " << deltaTime << std::endl;
+
     m_particleBufferData.clear(); // Clear buffer for refill
     size_t activeParticleCount = 0;
 
