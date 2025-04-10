@@ -335,65 +335,63 @@ void Engine::setCSLSystem(CSL::CSLSystem* sys) {
 }
 
 void Engine::run() {
-    double lastTime = glfwGetTime(); // For delta time calculation
-
     while (m_isRunning && !glfwWindowShouldClose(m_window)) {
-        // Calculate frame time / delta time
+        auto frameStart = std::chrono::high_resolution_clock::now();
+
+        // Frame time calculation
         double currentTime = glfwGetTime();
-        double deltaTime = currentTime - lastTime;
-        lastTime = currentTime;
-        
-        m_performance.frameTime = deltaTime;
-        m_performance.fps = static_cast<int>(1.0 / deltaTime);
+        m_deltaTime = currentTime - m_lastFrameTime;
+        m_lastFrameTime = currentTime;
+        double currentFrameTime = m_deltaTime; // Use calculated delta time for updates
 
         processInput();
-        updateCamera();
 
-        // Update CSL System (if set)
+        // --- Start CSL Update Timing ---
+        auto cslStart = std::chrono::high_resolution_clock::now();
         if (m_cslSystem) {
-            m_cslSystem->update();
+            m_cslSystem->update(); // Assuming this handles frame grabbing internally or uses m_currentFrame
         }
+        auto cslEnd = std::chrono::high_resolution_clock::now();
+        std::cout << "CSL Update: " << std::chrono::duration_cast<std::chrono::microseconds>(cslEnd - cslStart).count() << " us" << std::endl;
+        // --- End CSL Update Timing ---
 
-        // Update Particle System & Log Time
-        double particleUpdateMs = 0.0;
+        // --- Start Particle Update Timing ---
+        auto particleUpdateStart = std::chrono::high_resolution_clock::now();
         if (m_particleSystem) {
-            auto particleUpdateStart = std::chrono::high_resolution_clock::now();
-            m_particleSystem->update(static_cast<float>(deltaTime));
-            auto particleUpdateEnd = std::chrono::high_resolution_clock::now();
-            particleUpdateMs = std::chrono::duration<double, std::milli>(particleUpdateEnd - particleUpdateStart).count();
+            m_particleSystem->update(static_cast<float>(currentFrameTime)); // Use calculated delta time
         }
+        auto particleUpdateEnd = std::chrono::high_resolution_clock::now();
+        std::cout << "Particle Update: " << std::chrono::duration_cast<std::chrono::microseconds>(particleUpdateEnd - particleUpdateStart).count() << " us" << std::endl;
+        // --- End Particle Update Timing ---
 
-        // Clear buffers
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f); // Dark grey background
+        updateCamera(); // Assuming this uses member variables, not deltaTime directly
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Create view and projection matrices
+        // Calculate view and projection matrices
         glm::mat4 view = glm::lookAt(m_camera.position, m_camera.target, m_camera.up);
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f/600.0f, 0.1f, 100.0f);
-        glm::mat4 mvp = projection * view; // Calculate MVP once
+        int fbWidth, fbHeight;
+        glfwGetFramebufferSize(m_window, &fbWidth, &fbHeight);
+        float aspectRatio = (fbHeight > 0) ? static_cast<float>(fbWidth) / fbHeight : 1.0f;
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
 
-        // Render grid
-        m_grid->render(view, projection);
+        // Render grid if available
+        if (m_grid) {
+            m_grid->render(view, projection);
+        }
 
-        // Render particles using the ParticleSystem class & Log Time
-        double particleRenderMs = 0.0;
+        // --- Start Particle Render Timing ---
+        auto particleRenderStart = std::chrono::high_resolution_clock::now();
         if (m_particleSystem) {
-            auto particleRenderStart = std::chrono::high_resolution_clock::now();
             m_particleSystem->render(view, projection);
-            auto particleRenderEnd = std::chrono::high_resolution_clock::now();
-            particleRenderMs = std::chrono::duration<double, std::milli>(particleRenderEnd - particleRenderStart).count();
         }
-        
-        // Log particle timings
-        // Only log periodically to avoid spamming console (e.g., every 60 frames)
-        static int frameCount = 0;
-        if (++frameCount % 60 == 0) {
-             std::cout << "Particle Update: " << particleUpdateMs << " ms, Render: " << particleRenderMs << " ms\n";
-        }
+        auto particleRenderEnd = std::chrono::high_resolution_clock::now();
+        std::cout << "Particle Render: " << std::chrono::duration_cast<std::chrono::microseconds>(particleRenderEnd - particleRenderStart).count() << " us" << std::endl;
+        // --- End Particle Render Timing ---
 
-        // --- Render Flammyx Trail End ---
+        auto frameEnd = std::chrono::high_resolution_clock::now();
+        std::cout << "Frame Total: " << std::chrono::duration_cast<std::chrono::microseconds>(frameEnd - frameStart).count() << " us" << std::endl;
 
-        // Swap buffers and poll events
         glfwSwapBuffers(m_window);
         glfwPollEvents();
     }
