@@ -15,7 +15,7 @@
 
 namespace TurtleEngine {
 
-Engine::Engine() : m_window(nullptr), m_isRunning(false), m_particleSystem(std::make_unique<ParticleSystem>(10000)), m_comboManager(std::make_unique<ComboManager>()) {
+Engine::Engine() : m_window(nullptr), m_isRunning(false), m_particleSystem(std::make_unique<ParticleSystem>(10000)) {
     m_performance.frameTime = 0.0;
     m_performance.fps = 0;
     m_performance.lastFrameTime = 0.0;
