@@ -509,24 +509,39 @@ GestureResult GestureRecognizer::recognizeAnnihlat(const std::vector<cv::Point2f
 }
 
 void GestureRecognizer::updateTransitionStats(const GestureResult& current, const GestureResult& previous) {
-    if (previous.type != GestureType::NONE) {
-        auto now = std::chrono::high_resolution_clock::now();
-        float latency = std::chrono::duration<float>(now - previous.timestamp).count();
+    // Use high_resolution_clock consistently for latency calculations
+    // Note: previous.timestamp is already high_resolution_clock::time_point
+    if (previous.type != GestureType::NONE && 
+        previous.endTimestamp != std::chrono::high_resolution_clock::time_point{}) { // Ensure previous timestamp is valid
         
-        if (latency > 1.0f) {  // Reset if gap exceeds 1s
+        auto now = std::chrono::high_resolution_clock::now(); // Use high_res_clock matching timestamps
+        // Ensure current.timestamp is valid before calculating duration
+        auto startTimeToUse = (current.timestamp != std::chrono::high_resolution_clock::time_point{}) ? 
+                               current.timestamp : now; // Use 'now' as fallback if current.timestamp is invalid
+                               
+        // Calculate latency using the endTimestamp of the previous gesture and the start timestamp of the current one
+        float latency = std::chrono::duration<float>(startTimeToUse - previous.endTimestamp).count();
+        
+        // Keep the reset logic if gap is too large
+        if (latency < 0.0f || latency > 1.0f) { // Also check for negative latency (clock skew?)
             m_lastTransition = {GestureType::NONE, current.type, 0.0f, current.confidence};
+            m_averageTransitionLatency = 0.0f; // Reset average on large gap or error
             return;
         }
         
         m_lastTransition = {previous.type, current.type, latency, 
                           std::min(previous.confidence, current.confidence)};
-        m_averageTransitionLatency = (m_averageTransitionLatency * 0.9f) + (latency * 0.1f);
+        m_averageTransitionLatency = (m_averageTransitionLatency * 0.9f) + (latency * 0.1f); // EMA update
 
         // DEBUG OUTPUT FOR TRANSITION
         GESTURE_DEBUG_LOG("UpdateTransitionStats Debug: PrevType=" << static_cast<int>(previous.type)
                          << ", CurrType=" << static_cast<int>(current.type)
                          << ", Latency=" << latency << "s"
                          << ", AvgLatency=" << m_averageTransitionLatency << "s");
+    } else if (current.type != GestureType::NONE) {
+        // If previous was NONE or invalid, set transition from NONE
+        m_lastTransition = {GestureType::NONE, current.type, 0.0f, current.confidence};
+        // Do not reset average latency here, wait for a valid transition pair
     }
 }
 
