@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)  # Increased for better PCH support
-project(SilentForgeDemo VERSION 1.0.0 LANGUAGES CXX)
+project(SilentForge VERSION 1.0.0 LANGUAGES CXX)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
@@ -23,6 +23,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
+# Configure version header
+configure_file(src/Version.hpp.in ${CMAKE_BINARY_DIR}/generated/Version.hpp)
+include_directories(${CMAKE_BINARY_DIR}/generated)
+
 # Dependency management
 if(NOT SF_USE_SYSTEM_LIBS)
     # Explicitly set vcpkg toolchain file if it exists
@@ -43,10 +47,13 @@ find_package(glm CONFIG REQUIRED)
 
 # OpenCV support
 if(SF_USE_OPENCV)
+    set(OpenCV_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-windows/share/opencv" CACHE PATH "Path to OpenCV config")
     find_package(OpenCV QUIET)
     if(OpenCV_FOUND)
         add_definitions(-DUSE_OPENCV)
         message(STATUS "OpenCV found: ${OpenCV_VERSION}")
+        message(STATUS "OpenCV include dirs: ${OpenCV_INCLUDE_DIRS}")
+        message(STATUS "OpenCV libs: ${OpenCV_LIBS}")
     else()
         message(WARNING "OpenCV not found. GestureRecognizer will use simplified implementation.")
         set(SF_USE_OPENCV OFF)
@@ -58,50 +65,25 @@ add_definitions(-DGLM_ENABLE_EXPERIMENTAL)
 
 # Display found package details for debugging
 message(STATUS "GLM include dirs: ${GLM_INCLUDE_DIRS}")
-if(SF_USE_OPENCV AND OpenCV_FOUND)
-    message(STATUS "OpenCV include dirs: ${OpenCV_INCLUDE_DIRS}")
-endif()
-
-# Collect source files
-file(GLOB_RECURSE ENGINE_SOURCES 
-    "src/engine/src/*.cpp"
-    "src/engine/include/*.hpp"
-)
-
-file(GLOB_RECURSE COMBAT_SOURCES 
-    "src/engine/combat/src/*.cpp"
-    "src/engine/combat/include/*.hpp"
-)
-
-file(GLOB_RECURSE TEMPORAL_SOURCES 
-    "src/engine/temporal/src/*.cpp"
-    "src/engine/temporal/include/*.hpp"
-)
-
-file(GLOB_RECURSE INPUT_SOURCES 
-    "src/engine/input/src/*.cpp"
-    "src/engine/input/include/*.hpp"
-)
-
-file(GLOB PCH_SOURCES
-    "src/pch/pch.hpp"
-    "src/pch/pch.cpp"
-)
-
-# Add PCH if enabled
-if(SF_ENABLE_PCH)
-    message(STATUS "Precompiled headers enabled")
-endif()
+message(STATUS "")
+message(STATUS "Silent Forge configuration summary:")
+message(STATUS "  Build type:             ${CMAKE_BUILD_TYPE}")
+message(STATUS "  Build tests:            ${SF_BUILD_TESTS}")
+message(STATUS "  Use system libraries:   ${SF_USE_SYSTEM_LIBS}")
+message(STATUS "  Precompiled headers:    ${SF_ENABLE_PCH}")
+message(STATUS "  Debugging enabled:      ${SF_ENABLE_DEBUGGING}")
+message(STATUS "  OpenCV support:         ${SF_USE_OPENCV}")
+message(STATUS "")
 
 # Include directories
 include_directories(
     ${GLM_INCLUDE_DIRS}
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/engine/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/engine/combat/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/engine/temporal/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/engine/input/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/pch
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/engine/include
+    ${CMAKE_SOURCE_DIR}/src/engine/combat/include
+    ${CMAKE_SOURCE_DIR}/src/engine/temporal/include
+    ${CMAKE_SOURCE_DIR}/src/engine/input/include
+    ${CMAKE_SOURCE_DIR}/src/pch
 )
 
 if(SF_USE_OPENCV AND OpenCV_FOUND)
@@ -113,43 +95,48 @@ if(SF_ENABLE_DEBUGGING)
     add_definitions(-DDEBUG)
 endif()
 
-# Create the main demo executable
-add_executable(SilentForgeDemo 
-    src/console_demo.cpp
-    ${ENGINE_SOURCES} 
-    ${COMBAT_SOURCES}
-    ${TEMPORAL_SOURCES}
-    ${INPUT_SOURCES}
-    ${PCH_SOURCES}
+# Standalone temporal demos
+add_executable(SimpleTemporalDemo 
+    src/demos/simple_temporal_demo.cpp
 )
 
-# Set up PCH
-if(SF_ENABLE_PCH)
-    target_precompile_headers(SilentForgeDemo PRIVATE src/pch/pch.hpp)
-endif()
+target_link_libraries(SimpleTemporalDemo PRIVATE glm::glm)
+set_target_properties(SimpleTemporalDemo PROPERTIES
+    OUTPUT_NAME "SimpleTemporalDemo"
+    FOLDER "Demos"
+)
 
-# Link libraries
-target_link_libraries(SilentForgeDemo PRIVATE glm::glm)
+# Improved Temporal Demo
+add_executable(ImprovedTemporalDemo 
+    src/demos/improved_temporal_demo.cpp
+)
+
+target_link_libraries(ImprovedTemporalDemo PRIVATE glm::glm)
 if(SF_USE_OPENCV AND OpenCV_FOUND)
-    target_link_libraries(SilentForgeDemo PRIVATE ${OpenCV_LIBS})
+    target_link_libraries(ImprovedTemporalDemo PRIVATE ${OpenCV_LIBS})
 endif()
 
-# Set target properties
-set_target_properties(SilentForgeDemo PROPERTIES
-    OUTPUT_NAME "SilentForgeDemo"
-    FOLDER "Applications"
+set_target_properties(ImprovedTemporalDemo PROPERTIES
+    OUTPUT_NAME "ImprovedTemporalDemo"
+    FOLDER "Demos"
 )
 
 if(MSVC)
     # Enable parallel builds for MSVC
-    target_compile_options(SilentForgeDemo PRIVATE /MP)
+    target_compile_options(SimpleTemporalDemo PRIVATE /MP)
+    target_compile_options(ImprovedTemporalDemo PRIVATE /MP)
     # Disable warnings about secure functions
-    target_compile_definitions(SilentForgeDemo PRIVATE _CRT_SECURE_NO_WARNINGS)
+    target_compile_definitions(SimpleTemporalDemo PRIVATE _CRT_SECURE_NO_WARNINGS)
+    target_compile_definitions(ImprovedTemporalDemo PRIVATE _CRT_SECURE_NO_WARNINGS)
     # Treat warnings as errors in Release builds
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
-        target_compile_options(SilentForgeDemo PRIVATE /WX)
+        target_compile_options(SimpleTemporalDemo PRIVATE /WX)
+        target_compile_options(ImprovedTemporalDemo PRIVATE /WX)
     endif()
 endif()
+
+# Installation rules
+install(TARGETS SimpleTemporalDemo ImprovedTemporalDemo DESTINATION bin)
 
 # Tests
 if(SF_BUILD_TESTS)
@@ -265,4 +252,20 @@ message(STATUS "  Use system libraries:   ${SF_USE_SYSTEM_LIBS}")
 message(STATUS "  Precompiled headers:    ${SF_ENABLE_PCH}")
 message(STATUS "  Debugging enabled:      ${SF_ENABLE_DEBUGGING}")
 message(STATUS "  OpenCV support:         ${SF_USE_OPENCV}")
-message(STATUS "") 
+message(STATUS "")
+
+# Enhanced Temporal Demo Executable
+add_executable(ImprovedTemporalDemo
+    "src/demos/improved_temporal_demo.cpp"
+    ${ENGINE_SOURCES}
+    ${TEMPORAL_SOURCES}
+)
+if(SF_ENABLE_PCH)
+    target_precompile_headers(ImprovedTemporalDemo PRIVATE src/pch/pch.hpp)
+endif()
+target_link_libraries(ImprovedTemporalDemo PRIVATE glm::glm)
+set_target_properties(ImprovedTemporalDemo PROPERTIES
+    OUTPUT_NAME "ImprovedTemporalDemo"
+    FOLDER "Demos"
+)
+install(TARGETS ImprovedTemporalDemo DESTINATION bin) 
