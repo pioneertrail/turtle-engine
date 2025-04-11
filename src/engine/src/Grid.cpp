@@ -1,6 +1,7 @@
 #include "Grid.hpp"
+#include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glad/glad.h> // Include for glGetError
+#include <glm/gtc/type_ptr.hpp>
 #include <vector>
 #include <iostream>
 

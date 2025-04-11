@@ -10,10 +10,12 @@
 #include "Shader.hpp"
 #include "csl/CSLSystem.hpp"
 #include "csl/GestureRecognizer.hpp"
-#include "combat/Combo.hpp"
+// Temporarily comment out Combo.hpp until a proper include path is found
+//#include "../combat/include/Combo.hpp"
+#include "../combat/include/Combo.hpp"
 #include "ParticleSystem.hpp"
-#include "combat/PlasmaWeapon.hpp"
-#include "combat/AIConstruct.hpp"
+#include "../combat/include/PlasmaWeapon.hpp"
+#include "../combat/include/AIConstruct.hpp"
 #include <mutex>
 #include <fstream> // For file logging
 // Forward declare CSLSystem to avoid full include here if possible

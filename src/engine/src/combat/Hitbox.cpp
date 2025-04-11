@@ -1,4 +1,4 @@
-#include "combat/Hitbox.hpp"
+#include "../../../engine/combat/include/Hitbox.hpp"
 #include <cmath> // For std::abs
 
 namespace TurtleEngine
