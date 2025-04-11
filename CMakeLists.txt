@@ -51,6 +51,7 @@ add_library(TurtleEngineCore
     src/engine/src/combat/Hitbox.cpp
     src/engine/src/combat/Combo.cpp
     src/engine/src/combat/PlasmaWeapon.cpp
+    src/engine/src/combat/AIConstruct.cpp
     src/engine/src/ParticleSystem.cpp
 )
 
@@ -164,6 +165,11 @@ if(BUILD_TESTS)
         src/tests/combat/PlasmaWeaponTest.cpp
     )
 
+    # Add AI construct test
+    add_executable(AIConstructTest
+        src/tests/combat/AIConstructTest.cpp
+    )
+
     # Find GTest
     find_package(GTest REQUIRED)
 
@@ -206,8 +212,29 @@ if(BUILD_TESTS)
         ${GTEST_INCLUDE_DIRS}
     )
 
+    target_link_libraries(AIConstructTest
+        PRIVATE
+        TurtleEngineCore
+        glad::glad
+        glm::glm
+        ${OPENGL_LIBRARIES}
+        glfw
+        GTest::GTest
+        GTest::Main
+    )
+
+    target_include_directories(AIConstructTest
+        PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/engine/include
+        ${CMAKE_SOURCE_DIR}/src/engine/graphics/include
+        ${CMAKE_SOURCE_DIR}/src/engine/combat/include
+        ${GTEST_INCLUDE_DIRS}
+    )
+
     add_test(NAME ParticleSystemTest COMMAND ParticleSystemTest)
     add_test(NAME PlasmaWeaponTest COMMAND PlasmaWeaponTest)
+    add_test(NAME AIConstructTest COMMAND AIConstructTest)
 endif()
 
 # After all targets are defined, add the DLL copy commands
@@ -262,6 +289,12 @@ if(OpenCV_BIN_DIR AND EXISTS "${OpenCV_BIN_DIR}") # Check if vcpkg provided the 
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 ${DLL}
                 $<TARGET_FILE_DIR:PlasmaWeaponTest>)
+        endif()
+        if (TARGET AIConstructTest)
+            add_custom_command(TARGET AIConstructTest POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${DLL}
+                $<TARGET_FILE_DIR:AIConstructTest>)
         endif()
     endforeach()
 endif()

@@ -12,6 +12,7 @@
 #include "ParticleSystem.hpp"
 #include <random>
 #include <fstream>
+#include <set>
 
 namespace TurtleEngine {
 
@@ -140,6 +141,20 @@ bool Engine::initialize(const std::string& windowTitle, int width, int height) {
     // Enable debug visualization for development
     m_plasmaWeapon->enableDebugVisualization(true);
     m_plasmaWeapon->setFiringMode(Combat::PlasmaWeapon::FiringMode::BURST);
+
+    // Create some initial AI constructs for testing
+    createAIConstruct(Combat::AIConstruct::Type::SENTRY, glm::vec3(5.0f, 0.0f, 5.0f));
+    createAIConstruct(Combat::AIConstruct::Type::HUNTER, glm::vec3(-5.0f, 0.0f, 5.0f));
+    createAIConstruct(Combat::AIConstruct::Type::GUARDIAN, glm::vec3(0.0f, 0.0f, 10.0f));
+    
+    // Add patrol points to the constructs
+    if (!m_aiConstructs.empty()) {
+        for (auto& construct : m_aiConstructs) {
+            construct->addPatrolPoint(glm::vec3(5.0f, 0.0f, 5.0f));
+            construct->addPatrolPoint(glm::vec3(-5.0f, 0.0f, 5.0f));
+            construct->addPatrolPoint(glm::vec3(0.0f, 0.0f, 10.0f));
+        }
+    }
 
     // Set up input callbacks
     glfwSetWindowUserPointer(m_window, this);
@@ -459,6 +474,70 @@ void Engine::update(double deltaTime) {
     if (m_plasmaWeapon) {
         m_plasmaWeapon->update(static_cast<float>(deltaTime));
     }
+    
+    // Update AI constructs
+    updateAIConstructs(static_cast<float>(deltaTime));
+    
+    // Handle interactions between plasma weapon and AI constructs
+    if (m_plasmaWeapon && !m_aiConstructs.empty()) {
+        handlePlasmaWeaponInteractions();
+    }
+}
+
+void Engine::handlePlasmaWeaponInteractions() {
+    // Simple collision detection between plasma particles and AI constructs
+    auto particles = m_particleSystem->getActiveParticles();
+    
+    // Skip if no active particles
+    if (particles.empty()) {
+        return;
+    }
+    
+    // Track constructs that were hit this frame
+    std::set<Combat::AIConstruct*> hitConstructs;
+    
+    // Check each particle against each construct
+    for (const auto& particle : particles) {
+        // Skip non-plasma particles (TODO: Add a better way to identify plasma particles)
+        if (particle.color.r < 0.8f || particle.color.g < 0.3f) {
+            continue; // Not a plasma particle (rough heuristic)
+        }
+        
+        // Check for collision with each construct
+        for (auto& construct : m_aiConstructs) {
+            // Skip if already hit this frame
+            if (hitConstructs.find(construct.get()) != hitConstructs.end()) {
+                continue;
+            }
+            
+            // Check distance between particle and construct
+            float distance = glm::distance(particle.position, construct->getPosition());
+            
+            // If within collision radius, apply damage
+            const float collisionRadius = 1.0f; // Adjust based on construct size
+            if (distance < collisionRadius) {
+                // Apply damage based on particle characteristics
+                float damage = 10.0f; // Base damage
+                
+                // Modify damage based on particle speed (faster = more damage)
+                float speed = glm::length(particle.velocity);
+                damage *= (0.5f + (speed / 20.0f)); // Normalize to reasonable range
+                
+                // Apply damage to construct
+                if (construct->applyDamage(damage, m_camera.position)) {
+                    std::cout << "[Engine] AI Construct hit by plasma! Applied " 
+                              << damage << " damage." << std::endl;
+                    
+                    // Add to hit set to prevent multiple hits in one frame
+                    hitConstructs.insert(construct.get());
+                } else {
+                    std::cout << "[Engine] AI Construct destroyed by plasma!" << std::endl;
+                }
+                
+                break; // Only one hit per particle
+            }
+        }
+    }
 }
 
 void Engine::render() {
@@ -499,9 +578,69 @@ void Engine::render() {
         m_plasmaWeapon->render(view, projection);
     }
     
+    // Render AI constructs
+    renderAIConstructs(view, projection);
+    
     // Swap buffers
     glfwSwapBuffers(m_window);
     glfwPollEvents();
+}
+
+void Engine::updateAIConstructs(float deltaTime) {
+    // Skip if no AI constructs
+    if (m_aiConstructs.empty()) {
+        return;
+    }
+    
+    // Update each construct with player (camera) position
+    for (auto& construct : m_aiConstructs) {
+        if (construct && construct->isAlive()) {
+            construct->update(deltaTime, m_camera.position);
+        }
+    }
+    
+    // Remove dead constructs (if any)
+    m_aiConstructs.erase(
+        std::remove_if(m_aiConstructs.begin(), m_aiConstructs.end(),
+            [](const std::unique_ptr<Combat::AIConstruct>& construct) {
+                return !construct->isAlive();
+            }),
+        m_aiConstructs.end()
+    );
+}
+
+void Engine::renderAIConstructs(const glm::mat4& view, const glm::mat4& projection) {
+    // Skip if no AI constructs
+    if (m_aiConstructs.empty()) {
+        return;
+    }
+    
+    // Render each construct
+    for (auto& construct : m_aiConstructs) {
+        if (construct && construct->isAlive()) {
+            construct->render(view, projection);
+        }
+    }
+}
+
+Combat::AIConstruct* Engine::createAIConstruct(Combat::AIConstruct::Type type, 
+                                             const glm::vec3& position,
+                                             float health) {
+    // Create new AI construct
+    auto construct = std::make_unique<Combat::AIConstruct>(type, position, health);
+    
+    // Initialize with particle system
+    if (!construct->initialize(m_particleSystem)) {
+        std::cerr << "[Engine] Failed to initialize AI construct" << std::endl;
+        return nullptr;
+    }
+    
+    // Enable debug visualization for development
+    construct->enableDebugVisualization(true);
+    
+    // Add to vector and return raw pointer
+    m_aiConstructs.push_back(std::move(construct));
+    return m_aiConstructs.back().get();
 }
 
 } // namespace TurtleEngine 

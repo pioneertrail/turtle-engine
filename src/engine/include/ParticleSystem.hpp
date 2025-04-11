@@ -9,7 +9,10 @@
 
 namespace TurtleEngine {
 
-    // Represents a single particle
+    /**
+     * @struct Particle
+     * @brief Represents a single particle with physical and visual properties
+     */
     struct Particle {
         glm::vec3 position{0.0f};
         glm::vec3 velocity{0.0f};
@@ -32,16 +35,22 @@ namespace TurtleEngine {
                         const std::string& fragmentShaderPath = "shaders/particle.frag");
 
         // Spawn a single particle
-        void spawnParticle(const Particle& particleProperties);
+        virtual void spawnParticle(const Particle& particleProperties);
         
         // Spawn multiple particles (e.g., for an explosion)
-        void spawnBurst(int count, glm::vec3 origin, float initialSpeed, float lifetime, glm::vec4 color);
+        virtual void spawnBurst(int count, glm::vec3 origin, float initialSpeed, float lifetime, glm::vec4 color);
 
         // Update particle positions, life, etc.
         void update(float deltaTime);
 
         // Render active particles
         bool render(const glm::mat4& view, const glm::mat4& projection);
+        
+        // Get number of active particles
+        size_t getActiveParticleCount() const { return m_activeParticleCount; }
+        
+        // Get active particles for collision detection
+        const std::vector<Particle>& getActiveParticles() const { return m_particles; }
 
     private:
         void createBuffers();

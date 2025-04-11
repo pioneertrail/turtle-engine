@@ -13,6 +13,7 @@
 #include "combat/Combo.hpp"
 #include "ParticleSystem.hpp"
 #include "combat/PlasmaWeapon.hpp"
+#include "combat/AIConstruct.hpp"
 #include <mutex>
 #include <fstream> // For file logging
 // Forward declare CSLSystem to avoid full include here if possible
@@ -50,6 +51,11 @@ public:
 
     // Getters for systems
     Combat::PlasmaWeapon* getPlasmaWeapon() { return m_plasmaWeapon.get(); }
+
+    // Create and add a new AI construct
+    Combat::AIConstruct* createAIConstruct(Combat::AIConstruct::Type type, 
+                                          const glm::vec3& position,
+                                          float health = 100.0f);
 
 private:
     // Callback handler for Flammyx gestures
@@ -112,6 +118,16 @@ private:
         double deltaTime;
     } m_performance;
 
+    // AI constructs
+    std::vector<std::unique_ptr<Combat::AIConstruct>> m_aiConstructs;
+
     std::ofstream m_debugLog; // Debug log file stream
+
+    // Internal methods
+    void update(double deltaTime);
+    void render();
+    void updateAIConstructs(float deltaTime);
+    void renderAIConstructs(const glm::mat4& view, const glm::mat4& projection);
+    void handlePlasmaWeaponInteractions();
 };
 } 
