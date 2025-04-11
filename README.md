@@ -129,6 +129,15 @@ git merge feature/new-feature
 3. Create tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z: Brief description"`
 4. Push changes and tag: `git push && git push --tags`
 
+## Development Best Practices & Growth Plan
+
+For detailed guidance on improving development practices as the project grows, see [Development Next Steps](docs/development-next-steps.md), which covers:
+
+- Advanced Git workflow techniques
+- Test coverage expansion strategies 
+- Edge case documentation for complex systems
+- Continuous improvement processes
+
 ## Features
 
 - Hardware-aware OpenGL context configuration
