@@ -1,0 +1,29 @@
+# This file defines code owners for the Silent Forge: Rebellion of Aethelgard project
+# Code owners are automatically requested for review when someone opens a PR that modifies code they own
+
+# Default owner for everything in the repo
+* @gabrielhuerta
+
+# Engine core
+/src/engine/include/ @gabrielhuerta
+/src/engine/src/ @gabrielhuerta
+
+# Combat system
+/src/engine/combat/ @gabrielhuerta
+
+# Input system
+/src/engine/input/ @gabrielhuerta
+
+# Temporal system
+/src/engine/temporal/ @gabrielhuerta
+
+# Tests
+/src/tests/ @gabrielhuerta
+
+# Build system
+/CMakeLists.txt @gabrielhuerta
+/*.ps1 @gabrielhuerta
+/*.bat @gabrielhuerta
+
+# Documentation
+/docs/ @gabrielhuerta 

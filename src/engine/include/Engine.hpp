@@ -2,10 +2,33 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include "Grid.hpp"
+#include "Shader.hpp"
+#include "csl/CSLSystem.hpp"
+#include "csl/GestureRecognizer.hpp"
+// Temporarily comment out Combo.hpp until a proper include path is found
+//#include "../combat/include/Combo.hpp"
+#include "../combat/include/Combo.hpp"
+#include "ParticleSystem.hpp"
+#include "../combat/include/PlasmaWeapon.hpp"
+#include "../combat/include/AIConstruct.hpp"
+#include <mutex>
+#include <fstream> // For file logging
+// Forward declare CSLSystem to avoid full include here if possible
+// #include "csl/CSLSystem.hpp" 
+
+namespace TurtleEngine {
+    namespace CSL { class CSLSystem; } // Forward declaration
+    struct GestureResult; // Forward declaration for callback type
+    namespace Combat { // Assuming ComboManager is in Combat namespace based on file path
+        class ComboManager;
+        struct ComboSequence; // Needed for constructor/member type
+    }
+}
 
 namespace TurtleEngine {
 
@@ -25,16 +48,38 @@ public:
     // Cleanup
     void shutdown();
 
+    // Set the CSL System instance
+    void setCSLSystem(CSL::CSLSystem* sys);
+
+    // Getters for systems
+    Combat::PlasmaWeapon* getPlasmaWeapon() { return m_plasmaWeapon.get(); }
+
+    // Create and add a new AI construct
+    Combat::AIConstruct* createAIConstruct(Combat::AIConstruct::Type type, 
+                                          const glm::vec3& position,
+                                          float health = 100.0f);
+
 private:
+    // Callback handler for Flammyx gestures
+    void handleFlammyxGesture(const CSL::GestureResult& result);
+
     // Hardware detection and configuration
     void detectHardwareCapabilities();
     void configureOpenGLContext();
     void processInput();
     void updateCamera();
 
+    // Callback for CSL gesture results
+    void onGestureRecognized(const CSL::GestureResult& result);
+
     // Core components
     GLFWwindow* m_window;
     bool m_isRunning;
+    std::unique_ptr<CSL::CSLSystem> m_cslSystem;
+    std::unique_ptr<ComboManager> m_comboManager;
+    std::vector<ComboSequence> m_definedCombos;
+    std::unique_ptr<ParticleSystem> m_particleSystem;
+    std::unique_ptr<Combat::PlasmaWeapon> m_plasmaWeapon;
     
     // Camera
     struct {
@@ -48,6 +93,14 @@ private:
 
     // Grid
     std::unique_ptr<Grid> m_grid;
+
+    // Flammyx Effect Rendering
+    Shader m_flammyxShader;
+    GLuint m_flammyxVao = 0;
+    GLuint m_flammyxVbo = 0;
+    size_t m_flammyxPointCount = 0;
+    float m_flammyxDuration = 0.0f;
+    std::mutex m_flammyxMutex;
     
     // Hardware info
     struct {
@@ -64,6 +117,19 @@ private:
         double frameTime;
         int fps;
         double lastFrameTime;
+        double deltaTime;
     } m_performance;
+
+    // AI constructs
+    std::vector<std::unique_ptr<Combat::AIConstruct>> m_aiConstructs;
+
+    std::ofstream m_debugLog; // Debug log file stream
+
+    // Internal methods
+    void update(double deltaTime);
+    void render();
+    void updateAIConstructs(float deltaTime);
+    void renderAIConstructs(const glm::mat4& view, const glm::mat4& projection);
+    void handlePlasmaWeaponInteractions();
 };
 } 

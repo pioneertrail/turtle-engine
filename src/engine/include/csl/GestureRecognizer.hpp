@@ -7,6 +7,7 @@
 #include <chrono>
 #include <map>
 #include <fstream>
+#include <optional>
 
 namespace TurtleEngine {
 namespace CSL {
@@ -26,9 +27,14 @@ struct GestureResult {
     cv::Point2f position;
     std::vector<cv::Point2f> trajectory;
     std::vector<float> velocities; // Normalized velocities (0.0 to 1.0)
-    std::chrono::high_resolution_clock::time_point timestamp;  // Start time
-    std::chrono::high_resolution_clock::time_point endTimestamp;
-    float transitionLatency;  // Time since last gesture
+    std::string gestureName = "UNKNOWN";
+    float debug_velocity = 0.0f;
+    std::chrono::high_resolution_clock::time_point timestamp;  // Recognition start time
+    std::chrono::high_resolution_clock::time_point endTimestamp; // Recognition end time
+    float transitionLatency;  // Time since last *recognized* gesture
+    
+    // Optional field for latency measurement of triggered gestures
+    std::optional<std::chrono::high_resolution_clock::time_point> triggerTimestamp;
 };
 
 struct ComboTransition {
@@ -61,31 +67,41 @@ public:
     float getGestureThreshold(GestureType type) const;
 
     // Add for test simulation
-    GestureResult processSimulatedPoints(const std::vector<cv::Point2f>& points);
+    GestureResult processSimulatedPoints(const std::vector<cv::Point2f>& points, const std::string& testCaseId = "Unknown");
+
+    // Circle closure threshold methods
+    void setCircleClosureThreshold(float threshold);
+    float getCircleClosureThreshold() const;
 
 private:
     // Internal gesture recognition methods
     GestureResult recognizeKhargail(const std::vector<cv::Point2f>& points);
     GestureResult recognizeFlammil(const std::vector<cv::Point2f>& points);
-    GestureResult recognizeStasai(const std::vector<cv::Point2f>& points);
+    GestureResult recognizeStasai(const std::vector<cv::Point2f>& points, const std::string& testCaseId);
     GestureResult recognizeAnnihlat(const std::vector<cv::Point2f>& points);
 
     // Helper methods
     float calculateSwipeConfidence(const std::vector<cv::Point2f>& points, const cv::Point2f& direction);
-    bool isCircle(const std::vector<cv::Point2f>& points);
+    bool isCircle(const std::vector<cv::Point2f>& points, const std::string& testCaseId = "Unknown");
     void updateTransitionStats(const GestureResult& current, const GestureResult& previous);
     void logGestureResult(const GestureResult& result);
+
+    // --- Velocity Calculation Helpers ---
+    std::vector<float> calculateRawVelocities(const std::vector<cv::Point2f>& points) const; // Assuming const correctness
+    std::vector<float> normalizeVelocities(const std::vector<float>& rawVelocities) const;
 
     // Member variables
     float m_sensitivity;
     float m_minConfidence;
     std::vector<cv::Point2f> m_previousPoints;
     GestureResult m_lastGesture;
+    GestureResult m_lastRecognizedGesture;
     ComboTransition m_lastTransition;
     float m_averageTransitionLatency;
     std::chrono::high_resolution_clock::time_point m_lastGestureTime;
     bool m_initialized;
     std::ofstream m_logFile; // Uncommented
+    float m_circleClosureThreshold; // Added circle closure threshold
     
     // New member variables for gesture-specific tracking
     std::map<GestureType, float> m_gestureThresholds;

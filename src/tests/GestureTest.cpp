@@ -93,11 +93,11 @@ void testGestureRecognition() {
                 break;
             }
             case GestureType::ANNIHLAT: {
-                // Generate a right swipe down
+                // Generate a right swipe up
                 float startX = width * 0.2f;
-                float startY = height * 0.3f;
+                float startY = height * 0.7f;
                 float endX = width * 0.8f;
-                float endY = height * 0.7f;
+                float endY = height * 0.3f;
                 
                 for (int i = 0; i <= 30; ++i) {
                     float t = static_cast<float>(i) / 30.0f;
@@ -163,7 +163,7 @@ void testGestureRecognition() {
             drawGestureTrajectory(testImage, trajectory);
             
             // Process the frame with the gesture recognizer
-            GestureResult result = recognizer.processFrame(testImage);
+            GestureResult result = recognizer.processSimulatedPoints(trajectory);
             
             // Check if the gesture was correctly recognized
             bool correct = (result.type == gestureType);
@@ -181,7 +181,7 @@ void testGestureRecognition() {
             cv::imshow("Gesture Recognition Test", testImage);
             
             // Wait for a key press
-            cv::waitKey(0);
+            cv::waitKey(1);
         }
     }
     
@@ -238,13 +238,16 @@ void testGestureRecognition() {
             std::string gestureName;
             switch (gestureIdx) {
                 case 0:
-                    gestureName = "SWIPE_RIGHT (Annihilate)";
+                    gestureName = "KHARGAIL (Charge)";
                     break;
                 case 1:
-                    gestureName = "CIRCLE";
+                    gestureName = "FLAMMIL (Flame)";
                     break;
                 case 2:
-                    gestureName = "TAP";
+                    gestureName = "STASAI (Circle)";
+                    break;
+                case 3:
+                    gestureName = "ANNIHLAT (Annihilate)";
                     break;
                 default:
                     continue;

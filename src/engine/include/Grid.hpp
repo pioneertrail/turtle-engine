@@ -12,7 +12,7 @@ public:
     Grid(int width, int height, float cellSize);
     ~Grid();
 
-    void render(const glm::mat4& view, const glm::mat4& projection);
+    bool render(const glm::mat4& view, const glm::mat4& projection);
     void setCellColor(int x, int y, const glm::vec3& color);
 
 private:

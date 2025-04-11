@@ -1,148 +1,196 @@
 cmake_minimum_required(VERSION 3.10)
-project(TurtleEngine VERSION 1.0.0 LANGUAGES CXX)
+project(TurtleEngine VERSION 1.0.0)
 
-# Set C++ standard
+# Required dependencies
+find_package(glm CONFIG REQUIRED)
+find_package(OpenCV REQUIRED)
+
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Set global output directories
+# Set vcpkg toolchain file if it exists
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake")
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake" 
+        CACHE STRING "Vcpkg toolchain file")
+endif()
+
+# Check for dependencies
+find_package(glm CONFIG QUIET)
+find_package(OpenCV QUIET)
+
+# If dependencies are not found, provide helpful message
+if(NOT glm_FOUND OR NOT OpenCV_FOUND)
+    message(STATUS "Some dependencies were not found. You may need to run setup_dependencies.ps1")
+    message(STATUS "GLM Found: ${glm_FOUND}")
+    message(STATUS "OpenCV Found: ${OpenCV_FOUND}")
+    
+    # Continue anyway for basic compilation
+endif()
+
+# Define source directories
+set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
+set(ENGINE_DIR ${SRC_DIR}/engine)
+set(COMBAT_DIR ${ENGINE_DIR}/combat)
+set(TEMPORAL_DIR ${ENGINE_DIR}/temporal)
+set(INPUT_DIR ${ENGINE_DIR}/input)
+set(TESTS_DIR ${SRC_DIR}/tests)
+set(PHASE1_TESTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/phase1_tests)
+set(PCH_DIR ${SRC_DIR}/pch)
+set(MOCKS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/mocks)
+
+# Define GLM_ENABLE_EXPERIMENTAL for all targets
+add_definitions(-DGLM_ENABLE_EXPERIMENTAL)
+
+# Include directories
+include_directories(
+    ${SRC_DIR}
+    ${ENGINE_DIR}/include
+    ${COMBAT_DIR}/include
+    ${TEMPORAL_DIR}/include
+    ${INPUT_DIR}/include
+    ${PCH_DIR}
+    ${MOCKS_DIR}
+)
+
+# Collect source files for engine core
+file(GLOB_RECURSE ENGINE_SOURCES
+    ${ENGINE_DIR}/src/*.cpp
+    ${ENGINE_DIR}/src/*.c
+)
+
+# Collect source files for combat system
+file(GLOB_RECURSE COMBAT_SOURCES
+    ${COMBAT_DIR}/src/*.cpp
+    ${COMBAT_DIR}/src/*.c
+)
+
+# Collect source files for temporal system
+file(GLOB_RECURSE TEMPORAL_SOURCES
+    ${TEMPORAL_DIR}/src/*.cpp
+    ${TEMPORAL_DIR}/src/*.c
+)
+
+# Collect source files for input system
+file(GLOB_RECURSE INPUT_SOURCES
+    ${INPUT_DIR}/src/*.cpp
+    ${INPUT_DIR}/src/*.c
+)
+
+# Add main executable if main.cpp exists
+if(EXISTS "${SRC_DIR}/main.cpp")
+    add_executable(TurtleEngine ${SRC_DIR}/main.cpp
+        ${ENGINE_SOURCES}
+        ${COMBAT_SOURCES}
+        ${TEMPORAL_SOURCES}
+        ${INPUT_SOURCES}
+    )
+    
+    # Link libraries if found
+    if(glm_FOUND)
+        target_link_libraries(TurtleEngine PRIVATE glm::glm)
+    endif()
+    
+    if(OpenCV_FOUND)
+        target_link_libraries(TurtleEngine PRIVATE ${OpenCV_LIBS})
+    endif()
+endif()
+
+# Build test executables
+option(BUILD_TESTS "Build test executables" ON)
+if(BUILD_TESTS)
+    message(STATUS "Building test executables")
+    # Check for test files in phase1_tests directory
+    if(EXISTS "${PHASE1_TESTS_DIR}/PlasmaWeaponTest.cpp")
+        add_executable(PlasmaWeaponTest ${PHASE1_TESTS_DIR}/PlasmaWeaponTest.cpp 
+            ${ENGINE_SOURCES} ${COMBAT_SOURCES})
+        target_include_directories(PlasmaWeaponTest PRIVATE ${PHASE1_TESTS_DIR})
+        if(glm_FOUND AND OpenCV_FOUND)
+            target_link_libraries(PlasmaWeaponTest PRIVATE glm::glm ${OpenCV_LIBS})
+        endif()
+    endif()
+    
+    if(EXISTS "${PHASE1_TESTS_DIR}/AIConstructTest.cpp")
+        add_executable(AIConstructTest ${PHASE1_TESTS_DIR}/AIConstructTest.cpp 
+            ${ENGINE_SOURCES} ${COMBAT_SOURCES})
+        target_include_directories(AIConstructTest PRIVATE ${PHASE1_TESTS_DIR})
+        if(glm_FOUND AND OpenCV_FOUND)
+            target_link_libraries(AIConstructTest PRIVATE glm::glm ${OpenCV_LIBS})
+        endif()
+    endif()
+    
+    if(EXISTS "${PHASE1_TESTS_DIR}/TemporalAnomalyTest.cpp")
+        add_executable(TemporalAnomalyTest ${PHASE1_TESTS_DIR}/TemporalAnomalyTest.cpp 
+            ${ENGINE_SOURCES} ${COMBAT_SOURCES} ${TEMPORAL_SOURCES})
+        target_include_directories(TemporalAnomalyTest PRIVATE ${PHASE1_TESTS_DIR})
+        if(glm_FOUND AND OpenCV_FOUND)
+            target_link_libraries(TemporalAnomalyTest PRIVATE glm::glm ${OpenCV_LIBS})
+        endif()
+    endif()
+    
+    if(EXISTS "${PHASE1_TESTS_DIR}/GestureRecognizerTest.cpp")
+        add_executable(GestureRecognizerTest ${PHASE1_TESTS_DIR}/GestureRecognizerTest.cpp 
+            ${ENGINE_SOURCES} ${INPUT_SOURCES})
+        target_include_directories(GestureRecognizerTest PRIVATE ${PHASE1_TESTS_DIR})
+        if(glm_FOUND AND OpenCV_FOUND)
+            target_link_libraries(GestureRecognizerTest PRIVATE glm::glm ${OpenCV_LIBS})
+        endif()
+    endif()
+    
+    if(EXISTS "${PHASE1_TESTS_DIR}/HealthSystemTest.cpp")
+        add_executable(HealthSystemTest ${PHASE1_TESTS_DIR}/HealthSystemTest.cpp 
+            ${ENGINE_SOURCES} ${COMBAT_SOURCES})
+        target_include_directories(HealthSystemTest PRIVATE ${PHASE1_TESTS_DIR})
+        if(glm_FOUND AND OpenCV_FOUND)
+            target_link_libraries(HealthSystemTest PRIVATE glm::glm ${OpenCV_LIBS})
+        endif()
+    endif()
+endif()
+
+# Set output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-# Build type and optimization settings
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
+# Copy resources if they exist
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/shaders")
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/shaders DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 endif()
 
-# OpenCV optimization options
-option(WITH_OPENMP "Enable OpenMP support" ON)
-option(ENABLE_FAST_MATH "Enable fast math optimizations" ON)
-option(WITH_CUDA "Enable CUDA support if available" ON)
-option(BUILD_TESTS "Build test suite" ON)
-
-# Find required packages
-find_package(OpenGL REQUIRED)
-find_package(GLEW REQUIRED)
-find_package(glfw3 REQUIRED CONFIG) # Use CONFIG mode for glfw3 with vcpkg
-find_package(glm REQUIRED CONFIG)   # Use CONFIG mode for glm with vcpkg
-find_package(OpenCV REQUIRED)
-if(NOT OpenCV_FOUND)
-    message(FATAL_ERROR "OpenCV not found. Please check your installation.")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets")
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assets DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 endif()
 
-# Add OpenCV bin directory to PATH for runtime
-# No longer needed to set manually if vcpkg handles DLL deployment or they are found in system PATH
-# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-# set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-# set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-
-# Core engine library for CSL, rendering, and game logic
-add_library(TurtleEngineCore
-    src/engine/src/Engine.cpp
-    src/engine/src/Shader.cpp
-    src/engine/src/Grid.cpp
-    src/engine/src/csl/GestureRecognizer.cpp
-    src/engine/src/csl/CSLSystem.cpp
-)
-
-# Performance optimization flags for gesture recognition and plasma effects
-# Apply only to Release configuration - AFTER add_library
-if(MSVC)
-    target_compile_options(TurtleEngineCore PRIVATE $<$<CONFIG:Release>:/O1 /arch:AVX2>)
-else()
-    target_compile_options(TurtleEngineCore PRIVATE $<$<CONFIG:Release>:-O3 -ffast-math -march=native>)
-endif()
-
-target_include_directories(TurtleEngineCore PUBLIC
-    ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/src/engine/include
-    # OpenCV includes are handled by find_package with vcpkg
-    # ${OpenCV_INCLUDE_DIRS} # Removed
-)
-
-target_link_libraries(TurtleEngineCore PUBLIC
-    OpenGL::GL
-    GLEW::GLEW # This target name is usually correct for GLEW
-    glfw      # glfw3 find_package (CONFIG mode) typically provides the 'glfw' target
-    glm::glm  # glm find_package (CONFIG mode) often provides 'glm::glm'
-    ${OpenCV_LIBS} # vcpkg should populate this variable via find_package
-)
-
-# Create main executable
-add_executable(${PROJECT_NAME} src/main.cpp)
-target_link_libraries(${PROJECT_NAME} PRIVATE TurtleEngineCore)
-
-# Copy shader files to build directory
-file(COPY ${CMAKE_SOURCE_DIR}/shaders DESTINATION ${CMAKE_BINARY_DIR}/bin) # Copy shaders to bin where executables are
-
-# Set output directories *before* targets are defined if needed globally
-# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin) # Keep this commented/removed if only tests go to bin
-
-if(BUILD_TESTS)
-    enable_testing()
-    # Set output directory specifically for tests *before* add_executable
-    # set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
-
-    # Add CSL Animation System test with optimizations
-    add_executable(CSLTest src/tests/CSLTest.cpp)
-    target_link_libraries(CSLTest PRIVATE TurtleEngineCore)
-    target_include_directories(CSLTest PRIVATE 
-        ${CMAKE_SOURCE_DIR}/src/engine/include
-        ${CMAKE_SOURCE_DIR}/src/tests
+# Create run script for Windows
+if(WIN32)
+    file(WRITE ${CMAKE_BINARY_DIR}/run_tests.bat
+        "@echo off\n"
+        "cd bin\n"
+        "echo Running PlasmaWeaponTest...\n"
+        "PlasmaWeaponTest.exe\n"
+        "echo Running AIConstructTest...\n"
+        "AIConstructTest.exe\n"
+        "echo Running TemporalAnomalyTest...\n"
+        "TemporalAnomalyTest.exe\n"
+        "echo Running GestureRecognizerTest...\n"
+        "GestureRecognizerTest.exe\n"
+        "echo Running HealthSystemTest...\n"
+        "HealthSystemTest.exe\n"
+        "pause\n"
     )
-    
-    # Add Gesture Recognition test with performance monitoring
-    add_executable(GestureTest 
-        src/tests/GestureTestMain.cpp 
-        src/tests/GestureTest.cpp
-    )
-    target_link_libraries(GestureTest PRIVATE TurtleEngineCore)
-    target_include_directories(GestureTest PRIVATE 
-        ${CMAKE_SOURCE_DIR}/src/engine/include 
-        ${CMAKE_SOURCE_DIR}/src/tests
-    )
-    
-    # Add basic camera test
-    add_executable(CameraTest src/tests/CameraTest.cpp)
-    target_link_libraries(CameraTest PRIVATE ${OpenCV_LIBS}) # Use ${OpenCV_LIBS}
-    # target_include_directories(CameraTest PRIVATE ${OpenCV_INCLUDE_DIRS}) # No longer needed
 endif()
 
-# After all targets are defined, add the DLL copy commands
-# This might need adjustment depending on how vcpkg handles DLLs
-if(OpenCV_BIN_DIR AND EXISTS "${OpenCV_BIN_DIR}") # Check if vcpkg provided the bin dir
-    file(GLOB OpenCV_DLLS "${OpenCV_BIN_DIR}/*.dll")
-    foreach(DLL ${OpenCV_DLLS})
-        if (TARGET TurtleEngine)
-            add_custom_command(TARGET TurtleEngine POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${DLL}
-                $<TARGET_FILE_DIR:TurtleEngine>)
-        endif()
-        if (TARGET CSLTest)
-            add_custom_command(TARGET CSLTest POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${DLL}
-                $<TARGET_FILE_DIR:CSLTest>)
-        endif()
-        if (TARGET GestureTest)
-            add_custom_command(TARGET GestureTest POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${DLL}
-                $<TARGET_FILE_DIR:GestureTest>)
-        endif()
-        if (TARGET CameraTest)
-            add_custom_command(TARGET CameraTest POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${DLL}
-                $<TARGET_FILE_DIR:CameraTest>)
-        endif()
-    endforeach()
+# Print configuration summary
+message(STATUS "CMake configuration for TurtleEngine:")
+message(STATUS "  Build type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "  Source directory: ${CMAKE_CURRENT_SOURCE_DIR}")
+message(STATUS "  Build directory: ${CMAKE_BINARY_DIR}")
+message(STATUS "  Tests enabled: ${BUILD_TESTS}")
+message(STATUS "  Using mock files: ${MOCKS_DIR}")
+message(STATUS "  Using precompiled header: ${PCH_DIR}")
+if(glm_FOUND)
+    message(STATUS "  GLM version: ${GLM_VERSION}")
 endif()
-
-# Set output directories for main targets (redundant if set globally)
-# set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin) # Let's ensure this is set correctly outside the test block too
-# set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-# set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib) 
+if(OpenCV_FOUND)
+    message(STATUS "  OpenCV version: ${OpenCV_VERSION}")
+endif() 

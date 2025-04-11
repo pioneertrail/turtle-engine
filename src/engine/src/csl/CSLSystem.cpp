@@ -10,7 +10,7 @@ CSLSystem::CSLSystem()
     , m_initialized(false)
     , m_cameraIndex(0)
     , m_cameraResolution(640, 480)
-    , m_lastGestureResult{GestureType::NONE, 0.0f, cv::Point2f(), std::vector<cv::Point2f>()}
+    , m_lastGestureResult()
     , m_plasmaDuration(0.1f)
 {
     m_gestureRecognizer = std::make_unique<GestureRecognizer>();
@@ -163,26 +163,72 @@ void CSLSystem::processFrame(const cv::Mat& frame) {
     if (!m_gestureRecognizer) {
         return;
     }
-
+    // Process frame using the recognizer
     GestureResult result = m_gestureRecognizer->processFrame(frame);
     
-    // Store the last gesture result
+    // Store the actual last gesture result from camera input
     {
         std::lock_guard<std::mutex> lock(m_resultMutex);
         m_lastGestureResult = result;
     }
     
-    // Only notify callbacks if confidence is high enough
-    if (result.confidence >= 0.7f) { // Using default minimum confidence
-        for (const auto& callback : m_callbacks) {
+    // Invoke callbacks based on confidence etc. from actual recognition
+    // Use the default minimum confidence for general callbacks
+    if (result.confidence >= m_gestureRecognizer->getMinConfidence()) { 
+         invokeCallbacks(result);
+    }
+}
+
+void CSLSystem::triggerGesture(GestureType type) {
+    std::cout << "CSLSystem: Triggering gesture type " << static_cast<int>(type) << std::endl;
+
+    // Create a minimal GestureResult for the triggered event
+    // We don't have trajectory data, so use placeholders
+    GestureResult result;
+    result.type = type;
+    result.confidence = 1.0f; // Assume 100% confidence for direct trigger
+    result.position = cv::Point2f(0, 0); // Placeholder position
+    result.timestamp = std::chrono::high_resolution_clock::now(); // Set timestamp
+    result.endTimestamp = result.timestamp; // Set endTimestamp to match
+    // result.triggerTimestamp = triggerTime; // Keep trigger time if needed elsewhere
+
+    // Specific handling for Flammil trajectory/velocity placeholders
+    if (type == GestureType::FLAMMIL) {
+        // Refined 5-point diagonal sweep from (100,100) to (200,200)
+        float startX = 100.0f, startY = 100.0f;
+        float endX = 200.0f, endY = 200.0f;
+        result.trajectory = {
+            {startX, startY},                                             // Point 0
+            {startX + (endX-startX)*0.25f, startY + (endY-startY)*0.25f}, // Point 1
+            {startX + (endX-startX)*0.50f, startY + (endY-startY)*0.50f}, // Point 2
+            {startX + (endX-startX)*0.75f, startY + (endY-startY)*0.75f}, // Point 3
+            {endX, endY}                                                  // Point 4
+        };
+        // Velocities scaling from 0.2f to 1.0f
+        result.velocities = {0.2f, 0.4f, 0.6f, 0.8f, 1.0f};
+    } else {
+        // Placeholder trajectory/velocity for other gestures if needed
+        result.trajectory = {{0,0}, {1,1}}; // Minimal trajectory
+        result.velocities = {0.5f, 0.5f}; // Minimal velocity
+    }
+
+    // Update last result and invoke callbacks
+    invokeCallbacks(result);
+}
+
+void CSLSystem::invokeCallbacks(const GestureResult& result) {
+    std::lock_guard<std::mutex> lock(m_resultMutex);
+    m_lastGestureResult = result; // Update last result
+    
+    // Invoke general callbacks
+    for (const auto& callback : m_callbacks) {
+        callback(result);
+    }
+    
+    // Invoke plasma callbacks specifically for Flammil
+    if (result.type == GestureType::FLAMMIL) {
+        for (const auto& callback : m_plasmaCallbacks) {
             callback(result);
-        }
-        // Trigger plasma effect if Flammil (Check against specific threshold)
-        float flammilThreshold = m_gestureRecognizer->getGestureThreshold(GestureType::FLAMMIL);
-        if (result.type == GestureType::FLAMMIL && result.confidence >= flammilThreshold) { // Use specific threshold
-            for (const auto& plasmaCallback : m_plasmaCallbacks) {
-                plasmaCallback(result);
-            }
         }
     }
 }

@@ -1,0 +1,14 @@
+Gesture Recognition Test Results
+===============================
+KHARGAIL (Charge):
+  Accuracy: 100% (10/10)
+  Average Confidence: 79.97%
+FLAMMIL (Flame):
+  Accuracy: 100% (10/10)
+  Average Confidence: 75.6623%
+STASAI (Circle):
+  Accuracy: 100% (10/10)
+  Average Confidence: 80%
+ANNIHLAT (Annihilate):
+  Accuracy: 100% (10/10)
+  Average Confidence: 75.5414%
