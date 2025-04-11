@@ -25,9 +25,12 @@ option(BUILD_TESTS "Build test suite" ON)
 # Find required packages
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
-find_package(glfw3 REQUIRED CONFIG) # Use CONFIG mode for glfw3 with vcpkg
-find_package(glm REQUIRED CONFIG)   # Use CONFIG mode for glm with vcpkg
+find_package(glfw3 CONFIG REQUIRED) # Use CONFIG mode for glfw3 with vcpkg
+find_package(glm CONFIG REQUIRED)   # Use CONFIG mode for glm with vcpkg
+find_package(glad CONFIG REQUIRED)  # Use CONFIG mode for glad with vcpkg
 find_package(OpenCV REQUIRED)
+find_package(GLFW3 REQUIRED)
+find_package(GLM REQUIRED)
 if(NOT OpenCV_FOUND)
     message(FATAL_ERROR "OpenCV not found. Please check your installation.")
 endif()
@@ -47,6 +50,7 @@ add_library(TurtleEngineCore
     src/engine/src/csl/CSLSystem.cpp
     src/engine/src/combat/Hitbox.cpp
     src/engine/src/combat/Combo.cpp
+    src/engine/src/combat/PlasmaWeapon.cpp
     src/engine/src/ParticleSystem.cpp
 )
 
@@ -61,15 +65,18 @@ endif()
 target_include_directories(TurtleEngineCore PUBLIC
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/src/engine/include
-    # OpenCV includes are handled by find_package with vcpkg
-    # ${OpenCV_INCLUDE_DIRS} # Removed
+    ${CMAKE_SOURCE_DIR}/src/engine/graphics/include
+    ${CMAKE_SOURCE_DIR}/src/engine/combat/include
+    ${OpenCV_INCLUDE_DIRS}
 )
 
-target_link_libraries(TurtleEngineCore PUBLIC
-    OpenGL::GL
-    GLEW::GLEW # This target name is usually correct for GLEW
-    glfw      # glfw3 find_package (CONFIG mode) typically provides the 'glfw' target
-    glm::glm  # glm find_package (CONFIG mode) often provides 'glm::glm'
+target_link_libraries(TurtleEngineCore
+    PRIVATE
+    ${OPENGL_LIBRARIES}
+    GLEW::GLEW
+    glfw
+    glad::glad # Add GLAD
+    glm::glm   # Add GLM
     ${OpenCV_LIBS} # vcpkg should populate this variable via find_package
 )
 
@@ -152,16 +159,55 @@ if(BUILD_TESTS)
         src/tests/graphics/ParticleSystemTest.cpp
     )
 
+    # Add plasma weapon test
+    add_executable(PlasmaWeaponTest
+        src/tests/combat/PlasmaWeaponTest.cpp
+    )
+
+    # Find GTest
+    find_package(GTest REQUIRED)
+
     target_link_libraries(ParticleSystemTest
         PRIVATE
-        TurtleEngine
-        gtest
-        gtest_main
+        TurtleEngineCore
+        glad::glad
+        glm::glm
         ${OPENGL_LIBRARIES}
-        ${GLFW_LIBRARIES}
+        glfw
+        GTest::GTest
+        GTest::Main
+    )
+
+    target_include_directories(ParticleSystemTest
+        PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/engine/include
+        ${CMAKE_SOURCE_DIR}/src/engine/graphics/include
+        ${GTEST_INCLUDE_DIRS}
+    )
+
+    target_link_libraries(PlasmaWeaponTest
+        PRIVATE
+        TurtleEngineCore
+        glad::glad
+        glm::glm
+        ${OPENGL_LIBRARIES}
+        glfw
+        GTest::GTest
+        GTest::Main
+    )
+
+    target_include_directories(PlasmaWeaponTest
+        PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/engine/include
+        ${CMAKE_SOURCE_DIR}/src/engine/graphics/include
+        ${CMAKE_SOURCE_DIR}/src/engine/combat/include
+        ${GTEST_INCLUDE_DIRS}
     )
 
     add_test(NAME ParticleSystemTest COMMAND ParticleSystemTest)
+    add_test(NAME PlasmaWeaponTest COMMAND PlasmaWeaponTest)
 endif()
 
 # After all targets are defined, add the DLL copy commands
@@ -210,6 +256,12 @@ if(OpenCV_BIN_DIR AND EXISTS "${OpenCV_BIN_DIR}") # Check if vcpkg provided the 
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 ${DLL}
                 $<TARGET_FILE_DIR:ParticleSystemTest>)
+        endif()
+        if (TARGET PlasmaWeaponTest)
+            add_custom_command(TARGET PlasmaWeaponTest POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${DLL}
+                $<TARGET_FILE_DIR:PlasmaWeaponTest>)
         endif()
     endforeach()
 endif()

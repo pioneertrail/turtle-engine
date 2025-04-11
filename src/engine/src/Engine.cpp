@@ -15,7 +15,7 @@
 
 namespace TurtleEngine {
 
-Engine::Engine() : m_window(nullptr), m_isRunning(false), m_particleSystem(std::make_unique<ParticleSystem>(10000)), m_comboManager(std::make_unique<ComboManager>()) {
+Engine::Engine() : m_window(nullptr), m_isRunning(false), m_particleSystem(std::make_unique<ParticleSystem>(10000)) {
     m_performance.frameTime = 0.0;
     m_performance.fps = 0;
     m_performance.lastFrameTime = 0.0;
@@ -30,6 +30,9 @@ Engine::Engine() : m_window(nullptr), m_isRunning(false), m_particleSystem(std::
 
     // Correct initialization for raw pointer
     m_cslSystem = std::make_unique<CSL::CSLSystem>(); 
+
+    // Initialize plasma weapon (will be fully set up in initialize())
+    m_plasmaWeapon = std::make_unique<Combat::PlasmaWeapon>();
 
     // Define combos (can be loaded from config later)
     // Corrected ComboStep aggregate initialization
@@ -127,6 +130,16 @@ bool Engine::initialize(const std::string& windowTitle, int width, int height) {
         std::cerr << "Failed to initialize Particle System" << std::endl;
         // Optionally return false if particles are critical
     }
+
+    // Initialize Plasma Weapon (Flammyx tribe weapon)
+    if (!m_plasmaWeapon || !m_plasmaWeapon->initialize(m_particleSystem)) {
+        std::cerr << "Failed to initialize Plasma Weapon" << std::endl;
+        // Optionally return false if weapon is critical
+    }
+    
+    // Enable debug visualization for development
+    m_plasmaWeapon->enableDebugVisualization(true);
+    m_plasmaWeapon->setFiringMode(Combat::PlasmaWeapon::FiringMode::BURST);
 
     // Set up input callbacks
     glfwSetWindowUserPointer(m_window, this);
@@ -255,24 +268,35 @@ void Engine::onGestureRecognized(const CSL::GestureResult& result) {
     }
     // --- End Latency Check ---
 
-    // Process the move via ComboManager 
-    bool moveProcessed = false;
-    std::string currentComboMove;
-    if (m_comboManager && gestureName != "UNKNOWN" && gestureName != "None") {
-        // Timing for ComboManager processing itself
-        auto start_time = std::chrono::high_resolution_clock::now();
-        m_comboManager->ProcessMove(gestureName);
-        currentComboMove = m_comboManager->getCurrentStateDebug(); // Get state *after* processing
-        auto end_time = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
-        std::cout << "    ComboManager::ProcessMove took: " << duration.count() << " us" << std::endl;
+    // --- Flammil Gesture Handler --- 
+    if (result.type == CSL::GestureType::FLAMMIL && result.confidence > 0.7f) {
+        std::cout << "[Engine] Flammil gesture detected with high confidence, firing plasma weapon!" << std::endl;
         
-        if (duration.count() > 100000) {
-            std::cerr << "!!!! WARNING: Combo processing took longer than 100ms !!!!" << std::endl;
+        if (m_plasmaWeapon) {
+            // Get camera forward direction for firing
+            float camX = cos(glm::radians(m_camera.yaw)) * cos(glm::radians(m_camera.pitch));
+            float camY = sin(glm::radians(m_camera.pitch));
+            float camZ = sin(glm::radians(m_camera.yaw)) * cos(glm::radians(m_camera.pitch));
+            glm::vec3 direction(camX, camY, camZ);
+            
+            // Quick-fire the plasma weapon in the camera's direction
+            m_plasmaWeapon->quickFire(m_camera.position, direction);
+        } else {
+            std::cerr << "[Engine] Error: Cannot handle Flammil gesture - plasma weapon not initialized!" << std::endl;
         }
-        if (!currentComboMove.empty()) { // Check if move resulted in a valid combo state
-             moveProcessed = true;
-        }
+    }
+    
+    // --- Process move in combo system ---
+    if(m_comboManager) {
+        m_comboManager->ProcessMove(gestureName);
+    }
+    
+    // --- Debug Log ---
+    if (m_debugLog.is_open()) {
+        m_debugLog << "[Gesture] Type: " << static_cast<int>(result.type) 
+                  << ", Name: " << gestureName
+                  << ", Confidence: " << result.confidence 
+                  << std::endl;
     }
 
     // --- Spawn FLAMMIL Ember Particles --- 
@@ -333,7 +357,7 @@ void Engine::onGestureRecognized(const CSL::GestureResult& result) {
     // --- End FLAMMIL Ember Particles --- 
 
     // --- Spawn particles based on SUCCESSFUL Combo Move processing --- 
-    if (moveProcessed && m_particleSystem) {
+    if (m_comboManager && gestureName != "UNKNOWN" && gestureName != "None") {
          // If a move was processed AND resulted in a valid combo state 
          glm::vec3 spawnPos = glm::vec3(0.0f, 1.0f, -2.0f); // Fixed spawn point IN FRONT of origin
         // TODO: Replace with actual collision point from hitbox check
@@ -341,7 +365,7 @@ void Engine::onGestureRecognized(const CSL::GestureResult& result) {
         float initialSpeed = 5.0f;
         float lifetime = 0.5f;
         int count = 20;
-        std::cout << "    Spawning HIT particle burst for move: " << currentComboMove << std::endl;
+        std::cout << "    Spawning HIT particle burst for move: " << gestureName << std::endl;
         m_particleSystem->spawnBurst(count, spawnPos, initialSpeed, lifetime, sparkColor);
     }
     // --- End Hit Particle Spawn ---
@@ -353,119 +377,47 @@ void Engine::setCSLSystem(CSL::CSLSystem* sys) {
 }
 
 void Engine::run() {
-    double firstSecondMarker = glfwGetTime() + 1.0;
-    bool fKeySimulated = false;
-    double successCheckTime = glfwGetTime() + 3.0; // Check after 3 seconds
-    bool gridRenderSuccess = false;
-    bool particleRenderSuccessAfterSim = false;
-    bool successLogged = false;
-
-    while (m_isRunning && !glfwWindowShouldClose(m_window) && !successLogged) { // Exit loop after logging success
-        // Log loop entry and window close status to file
-        m_debugLog << "[Engine Run] Loop Start. Window Should Close: " << glfwWindowShouldClose(m_window) << std::endl;
-
-        auto frameStart = std::chrono::high_resolution_clock::now();
-
-        // Frame time calculation
-        double currentTime = glfwGetTime();
-        m_performance.deltaTime = currentTime - m_performance.lastFrameTime;
-        m_performance.lastFrameTime = currentTime;
-        double currentFrameTime = m_performance.deltaTime;
-
-        // Simulate F key press after 1 second
-        if (!fKeySimulated && currentTime >= firstSecondMarker) {
-            m_debugLog << "[Engine Run] Simulating F key press." << std::endl;
-            if (m_cslSystem) {
-                 m_cslSystem->triggerGesture(CSL::GestureType::FLAMMIL);
-            }
-            fKeySimulated = true;
-        }
-
-        processInput();
-
-        // --- Start CSL Update Timing ---
-        auto cslStart = std::chrono::high_resolution_clock::now();
-        if (m_cslSystem) {
-            m_cslSystem->update();
-        }
-        auto cslEnd = std::chrono::high_resolution_clock::now();
-        m_debugLog << "CSL Update: " << std::chrono::duration_cast<std::chrono::microseconds>(cslEnd - cslStart).count() << " us" << std::endl;
-
-        // --- Start Particle Update Timing ---
-        auto particleUpdateStart = std::chrono::high_resolution_clock::now();
-        if (m_particleSystem) {
-            m_debugLog << "  [Engine Run] Passing deltaTime to ParticleSystem::update: " << static_cast<float>(currentFrameTime) << std::endl;
-            m_particleSystem->update(static_cast<float>(currentFrameTime));
-        }
-        auto particleUpdateEnd = std::chrono::high_resolution_clock::now();
-        m_debugLog << "Particle Update: " << std::chrono::duration_cast<std::chrono::microseconds>(particleUpdateEnd - particleUpdateStart).count() << " us" << std::endl;
-
-        updateCamera();
-
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        m_debugLog << "Cleared to dark grey" << std::endl; // Debug log for clear to file
-
-        // Calculate view and projection matrices
-        glm::mat4 view = glm::lookAt(m_camera.position, m_camera.target, m_camera.up);
-        int fbWidth, fbHeight;
-        glfwGetFramebufferSize(m_window, &fbWidth, &fbHeight);
-        float aspectRatio = (fbHeight > 0) ? static_cast<float>(fbWidth) / fbHeight : 1.0f;
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspectRatio, 0.1f, 100.0f);
-
-        // --- Debugging Logs ---
-        GLint currentProgram = 0;
-        glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgram);
-        m_debugLog << "Shader Program Active (Before Grid/Particles): " << currentProgram << std::endl;
-        m_debugLog << "View Matrix Diag: [" << view[0][0] << ", " << view[1][1] << ", " << view[2][2] << ", " << view[3][3] << "]" << std::endl;
-        m_debugLog << "Projection Matrix Diag: [" << projection[0][0] << ", " << projection[1][1] << ", " << projection[2][2] << ", " << projection[3][3] << "]" << std::endl;
-
-        // Log grid pointer state before check
-        m_debugLog << "  [Engine Run] Checking grid pointer: " << (m_grid ? "Valid" : "NULL") << std::endl; 
-
-        // Render grid if available and track success
-        bool currentGridSuccess = false;
-        if (m_grid) {
-            currentGridSuccess = m_grid->render(view, projection);
-            if (currentGridSuccess) gridRenderSuccess = true; // Mark success if it rendered OK at least once
-        }
-
-        // --- Start Particle Render Timing ---
-        auto particleRenderStart = std::chrono::high_resolution_clock::now();
-        bool currentParticleSuccess = false;
-        if (m_particleSystem) {
-            currentParticleSuccess = m_particleSystem->render(view, projection);
-            if (fKeySimulated && currentParticleSuccess) { // Only count particle success *after* we tried spawning them
-                 particleRenderSuccessAfterSim = true;
-            }
-        }
-        auto particleRenderEnd = std::chrono::high_resolution_clock::now();
-        m_debugLog << "Particle Render: " << std::chrono::duration_cast<std::chrono::microseconds>(particleRenderEnd - particleRenderStart).count() << " us" << std::endl;
-        // --- End Particle Render Timing ---
-
-        auto frameEnd = std::chrono::high_resolution_clock::now();
-        m_debugLog << "Frame Total: " << std::chrono::duration_cast<std::chrono::microseconds>(frameEnd - frameStart).count() << " us" << std::endl;
-
-        // Check for success after 3 seconds
-        if (!successLogged && currentTime >= successCheckTime) {
-            if (gridRenderSuccess && particleRenderSuccessAfterSim) {
-                std::cout << "RENDER_CHECK_SUCCESS" << std::endl; // Log success marker to console
-                m_debugLog << "RENDER_CHECK_SUCCESS" << std::endl; // Also log to file
-                successLogged = true; // Set flag to exit loop
-                glfwSetWindowShouldClose(m_window, GLFW_TRUE); // Force exit
-            } else {
-                std::cerr << "RENDER_CHECK_FAILURE: Grid Success=" << gridRenderSuccess 
-                          << ", Particle Success After Sim=" << particleRenderSuccessAfterSim << std::endl;
-                m_debugLog << "RENDER_CHECK_FAILURE: Grid Success=" << gridRenderSuccess 
-                           << ", Particle Success After Sim=" << particleRenderSuccessAfterSim << std::endl;
-                 successLogged = true; // Exit even on failure for automation
-                 glfwSetWindowShouldClose(m_window, GLFW_TRUE); // Force exit
-            }
-        }
-
-        glfwSwapBuffers(m_window);
-        glfwPollEvents();
+    if (!m_window || !m_isRunning) {
+        std::cerr << "Engine not properly initialized!" << std::endl;
+        return;
     }
+
+    // Main game loop
+    double lastTime = glfwGetTime();
+    while (!glfwWindowShouldClose(m_window) && m_isRunning) {
+        // Calculate delta time
+        double currentTime = glfwGetTime();
+        double deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
+
+        // Cap minimum delta time to avoid extreme physics jumps on lag
+        if (deltaTime > 0.1) {
+            deltaTime = 0.1;
+        }
+
+        // Update game state
+        update(deltaTime);
+
+        // Render frame
+        render();
+
+        // Log performance data periodically (every ~5 seconds)
+        m_performance.lastFrameTime += deltaTime;
+        if (m_performance.lastFrameTime > 5.0) {
+            m_performance.lastFrameTime = 0.0;
+            std::cout << "FPS: " << m_performance.fps << ", Frame Time: " << m_performance.frameTime * 1000.0 << "ms" << std::endl;
+            
+            // Log to file if open
+            if (m_debugLog.is_open()) {
+                m_debugLog << "[Performance] FPS: " << m_performance.fps 
+                          << ", Frame Time: " << m_performance.frameTime * 1000.0 << "ms" 
+                          << std::endl;
+            }
+        }
+    }
+
+    // Cleanup
+    shutdown();
 }
 
 void Engine::shutdown() {
@@ -480,6 +432,76 @@ void Engine::shutdown() {
     }
     glfwTerminate();
     m_isRunning = false;
+}
+
+void Engine::update(double deltaTime) {
+    // Check frame timing
+    m_performance.frameTime = deltaTime;
+    m_performance.fps = 1.0 / deltaTime;
+    
+    // Process input
+    processInput();
+    
+    // Update camera
+    updateCamera();
+    
+    // Update CSL system
+    if (m_cslSystem) {
+        m_cslSystem->update(deltaTime);
+    }
+    
+    // Update particle system
+    if (m_particleSystem) {
+        m_particleSystem->update(static_cast<float>(deltaTime));
+    }
+    
+    // Update plasma weapon
+    if (m_plasmaWeapon) {
+        m_plasmaWeapon->update(static_cast<float>(deltaTime));
+    }
+}
+
+void Engine::render() {
+    // Clear the screen
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
+    // Get window dimensions
+    int windowWidth, windowHeight;
+    glfwGetWindowSize(m_window, &windowWidth, &windowHeight);
+    
+    // Create view and projection matrices
+    glm::mat4 view = glm::lookAt(
+        m_camera.position,
+        m_camera.target,
+        m_camera.up
+    );
+    
+    glm::mat4 projection = glm::perspective(
+        glm::radians(45.0f),
+        static_cast<float>(windowWidth) / static_cast<float>(windowHeight),
+        0.1f,
+        100.0f
+    );
+    
+    // Render grid
+    if (m_grid) {
+        m_grid->render(view, projection);
+    }
+    
+    // Render particle system
+    if (m_particleSystem) {
+        m_particleSystem->render(view, projection);
+    }
+    
+    // Render plasma weapon effects
+    if (m_plasmaWeapon) {
+        m_plasmaWeapon->render(view, projection);
+    }
+    
+    // Swap buffers
+    glfwSwapBuffers(m_window);
+    glfwPollEvents();
 }
 
 } // namespace TurtleEngine 

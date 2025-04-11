@@ -12,6 +12,7 @@
 #include "csl/GestureRecognizer.hpp"
 #include "combat/Combo.hpp"
 #include "ParticleSystem.hpp"
+#include "combat/PlasmaWeapon.hpp"
 #include <mutex>
 #include <fstream> // For file logging
 // Forward declare CSLSystem to avoid full include here if possible
@@ -47,6 +48,9 @@ public:
     // Set the CSL System instance
     void setCSLSystem(CSL::CSLSystem* sys);
 
+    // Getters for systems
+    Combat::PlasmaWeapon* getPlasmaWeapon() { return m_plasmaWeapon.get(); }
+
 private:
     // Callback handler for Flammyx gestures
     void handleFlammyxGesture(const CSL::GestureResult& result);
@@ -67,6 +71,7 @@ private:
     std::unique_ptr<ComboManager> m_comboManager;
     std::vector<ComboSequence> m_definedCombos;
     std::unique_ptr<ParticleSystem> m_particleSystem;
+    std::unique_ptr<Combat::PlasmaWeapon> m_plasmaWeapon;
     
     // Camera
     struct {
