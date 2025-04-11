@@ -22,7 +22,7 @@ This document outlines the demonstration scenarios for Phase 1 components of "Si
 
 ### 4. TemporalAnomalySystem
 - **Requirements**: Create a time manipulation system with different anomaly types affecting entity behavior
-- **Test Reference**: `temporal_anomaly_fixed_test.cpp`, `test_results_temporalanomalysystem.txt`
+- **Test Reference**: `TemporalAnomalyTest.cpp`, `test_results_temporalanomalysystem.txt`
 - **Demo Scenario**: Demonstrates SLOWFIELD and RIFT anomalies, time scale effects on entities (0.4x, 1.0x), and visualization
 
 ### 5. GestureRecognizer
