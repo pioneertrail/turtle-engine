@@ -1,0 +1,112 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [ main, development ]
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
+      - 'docs/**'
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up MSVC
+        uses: microsoft/setup-msbuild@v1.1
+
+      - name: Detect Build System
+        id: detect-build
+        run: |
+          if (Test-Path -Path "CMakeLists.txt") {
+            echo "::set-output name=build_system::cmake"
+          } else {
+            echo "::set-output name=build_system::msvc"
+          }
+
+      # CMake build path
+      - name: Cache dependencies (CMake)
+        if: steps.detect-build.outputs.build_system == 'cmake'
+        uses: actions/cache@v3
+        with:
+          path: |
+            build/vcpkg_installed
+            build/CMakeCache.txt
+            build/CMakeFiles
+          key: ${{ runner.os }}-build-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-build-
+
+      - name: Configure CMake
+        if: steps.detect-build.outputs.build_system == 'cmake'
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build with CMake
+        if: steps.detect-build.outputs.build_system == 'cmake'
+        run: cmake --build build --config Debug
+
+      - name: Run Tests with CMake
+        if: steps.detect-build.outputs.build_system == 'cmake'
+        run: |
+          cd build
+          ctest -C Debug --output-on-failure
+
+      # Direct MSVC build path
+      - name: Build with MSVC
+        if: steps.detect-build.outputs.build_system == 'msvc'
+        run: |
+          mkdir -p build
+          cd src
+          # Compile core libraries
+          cl /EHsc /c /Fo"..\build\\" engine\combat\*.cpp engine\*.cpp
+          # Compile tests
+          cl /EHsc /Fe"..\build\tests.exe" /Fo"..\build\\" tests\*.cpp "..\build\*.obj"
+
+      - name: Run Phase 1 Tests with MSVC
+        if: steps.detect-build.outputs.build_system == 'msvc'
+        run: powershell -ExecutionPolicy Bypass -File ./new_phase1_tests.ps1
+
+  code-quality:
+    name: Code Quality Checks
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up clang-format
+        uses: KyleMayes/install-llvm-action@v1
+        with:
+          version: "13.0"
+          directory: ${{ runner.temp }}/llvm
+
+      - name: Check code formatting
+        shell: bash
+        run: |
+          shopt -s globstar
+          for file in src/**/*.{cpp,h,hpp}; do
+            if [ -f "$file" ]; then
+              "${{ runner.temp }}/llvm/bin/clang-format" --style=file --dry-run --Werror "$file"
+            fi
+          done
+
+      - name: Install CppCheck
+        run: |
+          $ErrorActionPreference = 'Stop'
+          try {
+            choco --version
+            Write-Host "Chocolatey is already installed"
+          } catch {
+            Write-Host "Installing Chocolatey..."
+            Set-ExecutionPolicy Bypass -Scope Process -Force
+            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+            Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+          }
+          choco install cppcheck -y
+
+      - name: Linting with CppCheck
+        run: |
+          cppcheck --enable=warning,performance,portability --error-exitcode=1 --suppress=missingIncludeSystem --suppress=unmatchedSuppression --inline-suppr src/ 

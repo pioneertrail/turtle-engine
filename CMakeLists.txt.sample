@@ -1,0 +1,78 @@
+cmake_minimum_required(VERSION 3.15)
+project(SilentForge VERSION 1.0.0 LANGUAGES CXX)
+
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Note: Run setup_dependencies.ps1 to add GLM and OpenCV dependencies with:
+# find_package(glm CONFIG REQUIRED)
+# find_package(OpenCV REQUIRED)
+# target_link_libraries(SilentForge PRIVATE glm::glm ${OpenCV_LIBS})
+
+# Define source directories
+set(ENGINE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/engine)
+set(COMBAT_DIR ${ENGINE_DIR}/combat)
+set(TESTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/tests)
+
+# Collect source files
+file(GLOB_RECURSE ENGINE_SOURCES 
+    ${ENGINE_DIR}/*.cpp
+    ${ENGINE_DIR}/*.hpp
+    ${ENGINE_DIR}/*.h
+)
+
+file(GLOB_RECURSE COMBAT_SOURCES 
+    ${COMBAT_DIR}/*.cpp
+    ${COMBAT_DIR}/*.hpp
+    ${COMBAT_DIR}/*.h
+)
+
+file(GLOB_RECURSE TEST_SOURCES 
+    ${TESTS_DIR}/*.cpp
+    ${TESTS_DIR}/*.hpp
+    ${TESTS_DIR}/*.h
+)
+
+# Add executable target
+add_executable(SilentForge 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
+    ${ENGINE_SOURCES}
+    ${COMBAT_SOURCES}
+)
+
+# Include directories
+target_include_directories(SilentForge PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${ENGINE_DIR}
+    ${COMBAT_DIR}
+    ${COMBAT_DIR}/include
+)
+
+# Testing
+enable_testing()
+
+# Add test executables
+add_executable(PlasmaWeaponTest ${TESTS_DIR}/PlasmaWeaponTest.cpp ${ENGINE_SOURCES} ${COMBAT_SOURCES})
+add_executable(AIConstructTest ${TESTS_DIR}/AIConstructTest.cpp ${ENGINE_SOURCES} ${COMBAT_SOURCES})
+add_executable(HealthSystemTest ${TESTS_DIR}/HealthSystemTest.cpp ${ENGINE_SOURCES} ${COMBAT_SOURCES})
+
+# Set include directories for tests
+foreach(test_target PlasmaWeaponTest AIConstructTest HealthSystemTest)
+    target_include_directories(${test_target} PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${ENGINE_DIR}
+        ${COMBAT_DIR}
+        ${COMBAT_DIR}/include
+    )
+endforeach()
+
+# Register tests with CTest
+add_test(NAME PlasmaWeaponTest COMMAND PlasmaWeaponTest)
+add_test(NAME AIConstructTest COMMAND AIConstructTest)
+add_test(NAME HealthSystemTest COMMAND HealthSystemTest)
+
+# Installation
+install(TARGETS SilentForge DESTINATION bin)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/assets DESTINATION .)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/README.md DESTINATION .) 

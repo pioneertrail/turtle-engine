@@ -1,0 +1,125 @@
+name: Release Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up MSVC
+        uses: microsoft/setup-msbuild@v1.1
+
+      - name: Detect Build System
+        id: detect-build
+        run: |
+          if (Test-Path -Path "CMakeLists.txt") {
+            echo "::set-output name=build_system::cmake"
+          } else {
+            echo "::set-output name=build_system::msvc"
+          }
+
+      # CMake build path
+      - name: Configure CMake
+        if: steps.detect-build.outputs.build_system == 'cmake'
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build with CMake
+        if: steps.detect-build.outputs.build_system == 'cmake'
+        run: cmake --build build --config Release
+
+      - name: Run Tests with CMake
+        if: steps.detect-build.outputs.build_system == 'cmake'
+        run: |
+          cd build
+          ctest -C Release --output-on-failure
+
+      # Direct MSVC build path
+      - name: Build with MSVC
+        if: steps.detect-build.outputs.build_system == 'msvc'
+        run: |
+          mkdir -p build/Release
+          cd src
+          
+          # Compile core libraries with Release optimization
+          cl /O2 /EHsc /c /Fo"..\build\Release\\" engine\combat\*.cpp engine\*.cpp
+          
+          # Check if main.cpp exists, otherwise build test executables
+          if (Test-Path -Path "main.cpp") {
+            # Compile main executable
+            cl /O2 /EHsc /Fe"..\build\Release\SilentForge.exe" /Fo"..\build\Release\\" main.cpp "..\build\Release\*.obj"
+          } else {
+            # Compile test executables instead
+            cl /O2 /EHsc /Fe"..\build\Release\SilentForgeTests.exe" /Fo"..\build\Release\\" tests\*.cpp "..\build\Release\*.obj"
+          }
+
+      - name: Run Phase 1 Tests with MSVC
+        if: steps.detect-build.outputs.build_system == 'msvc'
+        run: powershell -ExecutionPolicy Bypass -File ./new_phase1_tests.ps1
+
+      - name: Create Artifacts Directory
+        run: mkdir -p artifacts
+
+      - name: Package Application
+        run: |
+          # Copy executable files
+          if (Test-Path -Path "build/Release/*.exe") {
+            cp build/Release/*.exe artifacts/
+          } elseif (Test-Path -Path "build/*.exe") {
+            cp build/*.exe artifacts/
+          }
+          
+          # Copy assets if they exist
+          if (Test-Path -Path "assets") {
+            cp -r assets artifacts/
+          } else {
+            Write-Host "Assets directory not found, skipping"
+            mkdir -p artifacts/assets
+          }
+          
+          # Copy documentation
+          cp README.md artifacts/
+          if (Test-Path -Path "docs") {
+            mkdir -p artifacts/docs
+            cp -r docs/technical artifacts/docs/
+          }
+
+      - name: Archive Release
+        uses: thedoctor0/zip-release@master
+        with:
+          type: 'zip'
+          filename: 'silent-forge-${{ github.ref_name }}.zip'
+          directory: artifacts
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          body: |
+            Release ${{ github.ref_name }} of Silent Forge: Rebellion of Aethelgard
+            
+            Please see CHANGELOG.md for details of changes in this release.
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./artifacts/silent-forge-${{ github.ref_name }}.zip
+          asset_name: silent-forge-${{ github.ref_name }}.zip
+          asset_content_type: application/zip 
