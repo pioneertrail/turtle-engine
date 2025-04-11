@@ -23,23 +23,28 @@ public:
     void applyTemporalEffect(const AnomalyEffect& effect, float deltaTime) override {
         m_timeScale = effect.timeDistortion;
         m_inAnomaly = true;
+        m_lastAnomalyType = effect.type;
         
         // Apply effect based on anomaly type
         switch (effect.type) {
             case AnomalyType::STASIS:
                 m_velocity *= 0.1f; // Almost stopped
+                std::cout << m_id << " affected by STASIS (time scale: " << m_timeScale << ")" << std::endl;
                 break;
                 
             case AnomalyType::DILATION:
                 m_velocity *= 0.5f; // Slowed
+                std::cout << m_id << " affected by DILATION (time scale: " << m_timeScale << ")" << std::endl;
                 break;
                 
             case AnomalyType::ACCELERATION:
                 m_velocity *= 2.0f; // Accelerated
+                std::cout << m_id << " affected by ACCELERATION (time scale: " << m_timeScale << ")" << std::endl;
                 break;
                 
             case AnomalyType::REVERSION:
                 m_velocity *= -1.0f; // Reversed
+                std::cout << m_id << " affected by REVERSION (time scale: " << m_timeScale << ")" << std::endl;
                 break;
                 
             case AnomalyType::RIFT:
@@ -53,6 +58,7 @@ public:
                     dist(gen),
                     dist(gen)
                 );
+                std::cout << m_id << " affected by RIFT (time scale: " << m_timeScale << ")" << std::endl;
                 break;
         }
     }
@@ -85,6 +91,10 @@ public:
     bool isInAnomaly() const {
         return m_inAnomaly;
     }
+
+    AnomalyType getLastAnomalyType() const {
+        return m_lastAnomalyType;
+    }
     
 private:
     std::string m_id;
@@ -92,6 +102,7 @@ private:
     float m_timeScale;
     glm::vec3 m_velocity;
     bool m_inAnomaly;
+    AnomalyType m_lastAnomalyType;
 };
 
 int main() {
@@ -124,6 +135,22 @@ int main() {
             std::cout << "COLLISION EVENT: Anomaly type " << static_cast<int>(anomaly1.getType()) 
                       << " overlapped with anomaly type " << static_cast<int>(anomaly2.getType()) 
                       << std::endl;
+        }
+    );
+
+    // Add a new callback for anomaly combinations
+    collisionHandler->setAnomalyCombinationCallback(
+        [](const CombinedAnomalyEffect& effect, const glm::vec3& position, float radius) {
+            std::cout << "COMBINATION EVENT: Anomalies combined at position " 
+                      << position.x << ", " << position.y << ", " << position.z
+                      << " resulting in type " << static_cast<int>(effect.resultType)
+                      << " with distortion " << effect.timeDistortion << std::endl;
+            
+            std::cout << "   Source types: ";
+            for (auto type : effect.sourceTypes) {
+                std::cout << static_cast<int>(type) << " ";
+            }
+            std::cout << std::endl;
         }
     );
     
@@ -206,26 +233,89 @@ int main() {
             std::cout << "\n=== Moving Player away from Stasis Field ===" << std::endl;
             entities[0]->setPosition(glm::vec3(0.0f, 0.0f, 0.0f));
             
-            // Create overlapping anomaly with the stasis field
-            std::cout << "\n=== Creating overlapping anomaly ===" << std::endl;
-            AnomalyEffect overlappingEffect(
+            // Create overlapping anomaly with the stasis field to test combination
+            std::cout << "\n=== Creating overlapping ACCELERATION anomaly to test combination with STASIS ===" << std::endl;
+            AnomalyEffect accelerationEffect(
                 AnomalyType::ACCELERATION,
                 2.0f,                 // Speedup
                 glm::vec3(4.0f, 0.0f, 0.0f), // Near stasis field
                 2.5f,                 // Radius to create overlap
                 5.0f,                 // 5 second duration
-                "OverlapTest"
+                "AccelerationTest"
             );
-            anomalySystem->createAnomaly(overlappingEffect);
+            anomalySystem->createAnomaly(accelerationEffect);
+            
+            // Move Enemy1 into the overlap area
+            std::cout << "\n=== Moving Enemy1 into overlap area between STASIS and ACCELERATION ===" << std::endl;
+            entities[1]->setPosition(glm::vec3(3.5f, 0.0f, 0.0f));
+        }
+        else if (currentTime == 8.0f) {
+            // Create a reversion anomaly that overlaps with dilation
+            std::cout << "\n=== Creating REVERSION anomaly that overlaps with DILATION ===" << std::endl;
+            AnomalyEffect reversionEffect(
+                AnomalyType::REVERSION,
+                -1.0f,                // Reverse time
+                glm::vec3(-4.0f, 0.0f, 0.0f), // Near dilation field
+                2.5f,                 // Radius to create overlap
+                5.0f,                 // 5 second duration
+                "ReversionTest"
+            );
+            anomalySystem->createAnomaly(reversionEffect);
+            
+            // Move Enemy2 into the overlap area
+            std::cout << "\n=== Moving Enemy2 into overlap area between DILATION and REVERSION ===" << std::endl;
+            entities[2]->setPosition(glm::vec3(-3.5f, 0.0f, 0.0f));
         }
         else if (currentTime == 10.0f) {
+            // Create a rift anomaly that overlaps with the acceleration
+            std::cout << "\n=== Creating RIFT anomaly that overlaps with ACCELERATION ===" << std::endl;
+            AnomalyEffect riftEffect(
+                AnomalyType::RIFT,
+                0.25f,                // Chaotic time flow
+                glm::vec3(5.0f, 0.0f, 0.0f), // Near acceleration field
+                3.0f,                 // Large radius
+                5.0f,                 // 5 second duration
+                "RiftTest"
+            );
+            anomalySystem->createAnomaly(riftEffect);
+            
             // Create a moving entity that will pass through anomalies
-            std::cout << "\n=== Creating moving entity to pass through anomalies ===" << std::endl;
+            std::cout << "\n=== Creating moving entity to pass through multiple anomalies ===" << std::endl;
             auto movingEntity = std::make_shared<TestEntity>("MovingProbe", glm::vec3(-10.0f, 0.0f, 0.0f));
             movingEntity->setVelocity(glm::vec3(2.0f, 0.0f, 0.0f)); // Move along X axis
             entities.push_back(movingEntity);
             anomalySystem->registerEntity(movingEntity);
         }
+        else if (currentTime == 12.0f) {
+            // Create two identical anomalies that overlap to test same-type combinations
+            std::cout << "\n=== Creating two identical DILATION anomalies that overlap ===" << std::endl;
+            AnomalyEffect dilationEffect1(
+                AnomalyType::DILATION,
+                0.7f,                // Moderate time slowdown
+                glm::vec3(0.0f, 5.0f, 0.0f), // Above origin
+                2.5f,                // Medium radius
+                3.0f,                // 3 second duration
+                "DilationTest1"
+            );
+            AnomalyEffect dilationEffect2(
+                AnomalyType::DILATION,
+                0.6f,                // Different time slowdown
+                glm::vec3(0.0f, 3.0f, 0.0f), // Overlapping with first dilation
+                2.5f,                // Medium radius
+                3.0f,                // 3 second duration
+                "DilationTest2"
+            );
+            anomalySystem->createAnomaly(dilationEffect1);
+            anomalySystem->createAnomaly(dilationEffect2);
+            
+            // Move Enemy3 into the overlap area
+            std::cout << "\n=== Moving Enemy3 into overlap area between two DILATION anomalies ===" << std::endl;
+            entities[3]->setPosition(glm::vec3(0.0f, 4.0f, 0.0f));
+        }
+        
+        // Display status of anomaly combination areas
+        auto combinationAreas = collisionHandler->getAnomalyCombinationAreas();
+        std::cout << "\nNumber of anomaly combination areas: " << combinationAreas.size() << std::endl;
         
         // Add time
         currentTime += deltaTime;
