@@ -77,6 +77,58 @@ turtle-engine/
 └── deps/              # External dependencies
 ```
 
+## Solo Developer Git Workflow
+
+This project uses a simplified Git workflow designed for solo development.
+
+### Main Branch
+- **new-main**: Primary development branch, should remain stable enough for builds
+
+### Optional Working Branches
+- **feature/XXX**: For experimental features or major changes
+- **bugfix/XXX**: For complex bug fixes that require isolation
+- **refactor/XXX**: For significant code reorganization
+
+### Commit Message Format
+```
+<type>(<scope>): <subject>
+```
+
+#### Types
+- **feat**: New feature
+- **fix**: Bug fix
+- **docs**: Documentation changes
+- **style**: Formatting, missing semicolons, etc; no code change
+- **refactor**: Code refactoring
+- **test**: Adding tests, refactoring tests
+- **perf**: Performance improvements
+- **build**: Build system changes
+- **chore**: Routine tasks, maintenance, etc.
+
+#### Examples
+```
+feat(combat): add scatter firing mode to plasma weapons
+fix(health): correct damage calculation for shield penetration
+```
+
+### Daily Workflow
+For most changes, work directly on the `new-main` branch. For experimental features, create a feature branch and merge back when ready:
+
+```bash
+# Creating a feature branch
+git checkout -b feature/new-feature
+
+# When ready to merge back
+git checkout new-main
+git merge feature/new-feature
+```
+
+### Releasing
+1. Update version numbers in relevant files
+2. Commit with message `chore(release): vX.Y.Z`
+3. Create tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z: Brief description"`
+4. Push changes and tag: `git push && git push --tags`
+
 ## Features
 
 - Hardware-aware OpenGL context configuration
