@@ -5,32 +5,104 @@
 #include <sstream>
 #include <algorithm>
 #include <cmath>
+#include <iomanip>
+#include "../../graphics/include/ParticleSystem.hpp"
+#include "../../include/ParticleSystem.hpp"
 
 namespace TurtleEngine {
 namespace Combat {
 
-AIConstruct::AIConstruct(Type type, const glm::vec3& position, float health)
+AIConstruct::AIConstruct(std::shared_ptr<ParticleSystem> particleSystem,
+                       Type type, 
+                       const glm::vec3& position, 
+                       float health)
     : m_type(type),
       m_currentState(State::IDLE),
       m_position(position),
-      m_velocity(0.0f),
+      m_velocity(glm::vec3(0.0f)),
       m_forward(0.0f, 0.0f, 1.0f),
-      m_health(health),
-      m_maxHealth(health),
-      m_attackDamage(10.0f),
-      m_attackCooldown(2.0f),
+      m_attackDamage(AIConstructConstants::DEFAULT_ATTACK_DAMAGE),
+      m_attackCooldown(AIConstructConstants::DEFAULT_ATTACK_COOLDOWN),
       m_currentAttackCooldown(0.0f),
-      m_attackRange(5.0f),
-      m_detectionRange(10.0f),
-      m_retreatHealthThreshold(0.3f), // Retreat at 30% health
-      m_movementSpeed(3.0f),
+      m_attackRange(AIConstructConstants::DEFAULT_ATTACK_RANGE),
+      m_detectionRange(AIConstructConstants::DEFAULT_DETECTION_RANGE),
+      m_retreatHealthThreshold(AIConstructConstants::DEFAULT_RETREAT_THRESHOLD),
+      m_movementSpeed(AIConstructConstants::DEFAULT_MOVEMENT_SPEED),
       m_stateTimer(0.0f),
       m_currentPatrolPoint(0),
       m_debugVisualizationEnabled(false),
-      m_constructColor(1.0f, 0.0f, 0.0f, 1.0f) { // Red color for enemy constructs
+      m_constructColor(1.0f, 0.0f, 0.0f, 1.0f), // Red color for enemy constructs
+      m_particleSystem(particleSystem) {
 
     // Initialize type-specific properties
     initializeTypeProperties();
+    
+    // Create health component (now receives particle system)
+    m_healthComponent = std::make_unique<HealthComponent>(health, m_particleSystem);
+    
+    // Set health component position
+    m_healthComponent->setPosition(m_position);
+    
+    // Setup damage and death callbacks
+    m_healthComponent->setDamageCallback([this](const DamageInfo& damage, float actualDamage) {
+        this->onDamageTaken(damage, actualDamage);
+    });
+    
+    m_healthComponent->setDeathCallback([this]() {
+        this->onDeath();
+    });
+    
+    // Setup resistances based on type
+    setupResistances();
+    
+    std::cout << "[AIConstruct] Initialized " << static_cast<int>(type) 
+              << " type at position (" << position.x << ", " 
+              << position.y << ", " << position.z << ")" << std::endl;
+}
+
+// Constructor overload for Graphics::ParticleSystem
+AIConstruct::AIConstruct(std::shared_ptr<Graphics::ParticleSystem> particleSystem,
+                        Type type, 
+                        const glm::vec3& position, 
+                        float health)
+    : m_type(type),
+      m_currentState(State::IDLE),
+      m_position(position),
+      m_velocity(glm::vec3(0.0f)),
+      m_forward(0.0f, 0.0f, 1.0f),
+      m_attackDamage(AIConstructConstants::DEFAULT_ATTACK_DAMAGE),
+      m_attackCooldown(AIConstructConstants::DEFAULT_ATTACK_COOLDOWN),
+      m_currentAttackCooldown(0.0f),
+      m_attackRange(AIConstructConstants::DEFAULT_ATTACK_RANGE),
+      m_detectionRange(AIConstructConstants::DEFAULT_DETECTION_RANGE),
+      m_retreatHealthThreshold(AIConstructConstants::DEFAULT_RETREAT_THRESHOLD),
+      m_movementSpeed(AIConstructConstants::DEFAULT_MOVEMENT_SPEED),
+      m_stateTimer(0.0f),
+      m_currentPatrolPoint(0),
+      m_debugVisualizationEnabled(false),
+      m_constructColor(1.0f, 0.0f, 0.0f, 1.0f), // Red color for enemy constructs
+      m_particleSystem(std::shared_ptr<ParticleSystem>()) { // Initialize with empty pointer for now
+
+    // Initialize type-specific properties
+    initializeTypeProperties();
+    
+    // Create health component (now receives particle system)
+    m_healthComponent = std::make_unique<HealthComponent>(health, m_particleSystem);
+    
+    // Set health component position
+    m_healthComponent->setPosition(m_position);
+    
+    // Setup damage and death callbacks
+    m_healthComponent->setDamageCallback([this](const DamageInfo& damage, float actualDamage) {
+        this->onDamageTaken(damage, actualDamage);
+    });
+    
+    m_healthComponent->setDeathCallback([this]() {
+        this->onDeath();
+    });
+    
+    // Setup resistances based on type
+    setupResistances();
     
     std::cout << "[AIConstruct] Initialized " << static_cast<int>(type) 
               << " type at position (" << position.x << ", " 
@@ -44,58 +116,89 @@ AIConstruct::~AIConstruct() {
 void AIConstruct::initializeTypeProperties() {
     switch (m_type) {
         case Type::SENTRY:
-            m_attackRange = 15.0f;
-            m_detectionRange = 20.0f;
-            m_movementSpeed = 1.0f;
-            m_attackDamage = 15.0f;
-            m_attackCooldown = 3.0f;
+            m_attackRange = AIConstructConstants::SENTRY_ATTACK_RANGE;
+            m_detectionRange = AIConstructConstants::SENTRY_DETECTION_RANGE;
+            m_movementSpeed = AIConstructConstants::SENTRY_MOVEMENT_SPEED;
+            m_attackDamage = AIConstructConstants::SENTRY_ATTACK_DAMAGE;
+            m_attackCooldown = AIConstructConstants::SENTRY_ATTACK_COOLDOWN;
             m_constructColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f); // Red
             break;
             
         case Type::HUNTER:
-            m_attackRange = 5.0f;
-            m_detectionRange = 25.0f;
-            m_movementSpeed = 6.0f;
-            m_attackDamage = 20.0f;
-            m_attackCooldown = 1.0f;
+            m_attackRange = AIConstructConstants::HUNTER_ATTACK_RANGE;
+            m_detectionRange = AIConstructConstants::HUNTER_DETECTION_RANGE;
+            m_movementSpeed = AIConstructConstants::HUNTER_MOVEMENT_SPEED;
+            m_attackDamage = AIConstructConstants::HUNTER_ATTACK_DAMAGE;
+            m_attackCooldown = AIConstructConstants::HUNTER_ATTACK_COOLDOWN;
             m_constructColor = glm::vec4(1.0f, 0.5f, 0.0f, 1.0f); // Orange
             break;
             
         case Type::GUARDIAN:
-            m_attackRange = 8.0f;
-            m_detectionRange = 15.0f;
-            m_movementSpeed = 2.0f;
-            m_attackDamage = 10.0f;
-            m_attackCooldown = 2.0f;
-            m_health = m_maxHealth = 200.0f;
+            m_attackRange = AIConstructConstants::GUARDIAN_ATTACK_RANGE;
+            m_detectionRange = AIConstructConstants::GUARDIAN_DETECTION_RANGE;
+            m_movementSpeed = AIConstructConstants::GUARDIAN_MOVEMENT_SPEED;
+            m_attackDamage = AIConstructConstants::GUARDIAN_ATTACK_DAMAGE;
+            m_attackCooldown = AIConstructConstants::GUARDIAN_ATTACK_COOLDOWN;
+            // Guardian has higher health, but it's now set in the setupResistances method
             m_constructColor = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f); // Blue
             break;
             
         case Type::SWARM:
-            m_attackRange = 3.0f;
-            m_detectionRange = 12.0f;
-            m_movementSpeed = 8.0f;
-            m_attackDamage = 5.0f;
-            m_attackCooldown = 0.5f;
-            m_health = m_maxHealth = 50.0f;
+            m_attackRange = AIConstructConstants::SWARM_ATTACK_RANGE;
+            m_detectionRange = AIConstructConstants::SWARM_DETECTION_RANGE;
+            m_movementSpeed = AIConstructConstants::SWARM_MOVEMENT_SPEED;
+            m_attackDamage = AIConstructConstants::SWARM_ATTACK_DAMAGE;
+            m_attackCooldown = AIConstructConstants::SWARM_ATTACK_COOLDOWN;
+            // Swarm has lower health, but it's now set in the setupResistances method
             m_constructColor = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f); // Green
             break;
     }
 }
 
-bool AIConstruct::initialize(std::shared_ptr<ParticleSystem> particleSystem) {
-    if (!particleSystem) {
-        std::cerr << "[AIConstruct] Error: Null particle system provided!" << std::endl;
-        return false;
+void AIConstruct::setupResistances() {
+    if (!m_healthComponent) {
+        return;
     }
-
-    m_particleSystem = particleSystem;
-    std::cout << "[AIConstruct] Successfully initialized with particle system" << std::endl;
     
-    // Create initial state particles
-    createStateParticles();
+    Resilience& resilience = m_healthComponent->getResilience();
     
-    return true;
+    // Set type-specific resistances and health
+    switch (m_type) {
+        case Type::SENTRY:
+            // Standard health, strong against plasma (energy turret)
+            resilience.setResistance(DamageType::PLASMA, AIConstructConstants::SENTRY_PLASMA_RESISTANCE);
+            break;
+            
+        case Type::HUNTER:
+            // Standard health, fast and agile, but no special resistances
+            resilience.setResistance(DamageType::PHYSICAL, AIConstructConstants::HUNTER_PHYSICAL_RESISTANCE);
+            break;
+            
+        case Type::GUARDIAN:
+            // High health, strong armor, shield
+            if (m_healthComponent) {
+                // Double the health for Guardians
+                m_healthComponent->setMaxHealth(m_healthComponent->getMaxHealth() * AIConstructConstants::GUARDIAN_HEALTH_MULTIPLIER);
+            }
+            
+            resilience.setResistance(DamageType::PHYSICAL, AIConstructConstants::GUARDIAN_PHYSICAL_RESISTANCE);
+            resilience.setShield(AIConstructConstants::GUARDIAN_SHIELD);
+            resilience.setFlatReduction(AIConstructConstants::GUARDIAN_FLAT_REDUCTION);
+            break;
+            
+        case Type::SWARM:
+            // Low health, fast but fragile
+            if (m_healthComponent) {
+                // Halve the health for Swarm units
+                m_healthComponent->setMaxHealth(m_healthComponent->getMaxHealth() * AIConstructConstants::SWARM_HEALTH_MULTIPLIER);
+            }
+            
+            // No resistances for swarm units - they're meant to be fragile
+            break;
+    }
+    
+    // Callbacks are already set in the constructor
+    // Position is already set in the constructor
 }
 
 void AIConstruct::update(float deltaTime, const glm::vec3& playerPosition) {
@@ -135,6 +238,11 @@ void AIConstruct::update(float deltaTime, const glm::vec3& playerPosition) {
             break;
     }
     
+    // Update health component position
+    if (m_healthComponent) {
+        m_healthComponent->setPosition(m_position);
+    }
+    
     // Update debug information
     if (m_debugVisualizationEnabled) {
         updateDebugInfo();
@@ -152,21 +260,81 @@ void AIConstruct::render(const glm::mat4& view, const glm::mat4& projection) {
 }
 
 bool AIConstruct::applyDamage(float amount, const glm::vec3& damageSource) {
-    // Apply damage to health
-    m_health = std::max(0.0f, m_health - amount);
+    if (!isAlive() || amount <= 0.0f) {
+        return isAlive();
+    }
     
-    std::cout << "[AIConstruct] Took " << amount << " damage. Health: " 
-              << m_health << "/" << m_maxHealth << std::endl;
+    // Create a simple damage info with physical damage
+    DamageInfo damage(
+        amount,
+        DamageType::PHYSICAL,
+        damageSource,
+        glm::normalize(m_position - damageSource), // Direction from source to construct
+        amount * 0.1f // Some impact force based on damage
+    );
     
-    // Create damage particle effect
-    createDamageParticles(damageSource);
+    return applyDamage(damage);
+}
+
+bool AIConstruct::applyDamage(const DamageInfo& damage) {
+    if (!isAlive() || !m_healthComponent) {
+        return isAlive();
+    }
     
-    // Check if should enter damaged state
-    if (isAlive() && m_currentState != State::DAMAGED) {
+    // Apply damage through health component
+    m_healthComponent->applyDamage(damage);
+    
+    return isAlive();
+}
+
+float AIConstruct::getHealth() const {
+    return m_healthComponent ? m_healthComponent->getCurrentHealth() : 0.0f;
+}
+
+float AIConstruct::getMaxHealth() const {
+    return m_healthComponent ? m_healthComponent->getMaxHealth() : 0.0f;
+}
+
+float AIConstruct::getHealthPercentage() const {
+    return m_healthComponent ? m_healthComponent->getHealthPercentage() : 0.0f;
+}
+
+bool AIConstruct::isAlive() const {
+    return m_healthComponent && m_healthComponent->isAlive();
+}
+
+void AIConstruct::onDamageTaken(const DamageInfo& damage, float actualDamage) {
+    // Enter damaged state when hit (if not already in it)
+    if (m_currentState != State::DAMAGED && isAlive()) {
         enterState(State::DAMAGED);
     }
     
-    return isAlive();
+    std::cout << "[AIConstruct] Took " << actualDamage 
+              << " damage (" << damage.amount << " raw). Health: " 
+              << getHealth() << "/" << getMaxHealth() << std::endl;
+}
+
+void AIConstruct::onDeath() {
+    std::cout << "[AIConstruct] Died" << std::endl;
+    
+    // Create death particles
+    if (m_particleSystem) {
+        // Death particles are more dramatic
+        glm::vec4 deathColor = glm::vec4(0.8f, 0.2f, 0.2f, 1.0f); // Red
+        int particleCount = 50;
+        float particleSpeed = 8.0f;
+        float particleLife = 2.0f;
+        
+        m_particleSystem->spawnBurst(
+            particleCount,
+            m_position,
+            particleSpeed,
+            particleLife,
+            deathColor
+        );
+    }
+    
+    // No need to change state since we're dead
 }
 
 void AIConstruct::addPatrolPoint(const glm::vec3& point) {
@@ -177,6 +345,12 @@ void AIConstruct::addPatrolPoint(const glm::vec3& point) {
 
 void AIConstruct::enableDebugVisualization(bool enabled) {
     m_debugVisualizationEnabled = enabled;
+    
+    // Also enable debug visualization for health component
+    if (m_healthComponent) {
+        m_healthComponent->enableDebugVisualization(enabled);
+    }
+    
     std::cout << "[AIConstruct] Debug visualization " 
               << (enabled ? "enabled" : "disabled") << std::endl;
 }
@@ -199,7 +373,8 @@ void AIConstruct::enterState(State newState) {
     // Reset state timer based on new state
     switch (newState) {
         case State::IDLE:
-            m_stateTimer = 2.0f + glm::linearRand(0.0f, 1.0f); // Random idle time
+            m_stateTimer = AIConstructConstants::IDLE_STATE_BASE_TIME + 
+                          glm::linearRand(0.0f, AIConstructConstants::IDLE_STATE_RANDOM_TIME);
             break;
             
         case State::PATROL:
@@ -213,11 +388,11 @@ void AIConstruct::enterState(State newState) {
             break;
             
         case State::RETREAT:
-            m_stateTimer = 5.0f; // Retreat for 5 seconds
+            m_stateTimer = AIConstructConstants::RETREAT_STATE_TIME;
             break;
             
         case State::DAMAGED:
-            m_stateTimer = 0.5f; // Damaged state lasts 0.5 seconds
+            m_stateTimer = AIConstructConstants::DAMAGED_STATE_TIME;
             break;
     }
     
@@ -236,7 +411,7 @@ void AIConstruct::updateIdleState(float deltaTime, const glm::vec3& playerPositi
     
     if (distanceToPlayer <= m_detectionRange) {
         // Player detected, attack if health is good, retreat if low
-        if (m_health < m_maxHealth * m_retreatHealthThreshold) {
+        if (getHealthPercentage() < m_retreatHealthThreshold) {
             enterState(State::RETREAT);
         } else {
             enterState(State::ATTACK);
@@ -260,7 +435,7 @@ void AIConstruct::updatePatrolState(float deltaTime, const glm::vec3& playerPosi
     
     if (distanceToPlayer <= m_detectionRange) {
         // Player detected, attack if health is good, retreat if low
-        if (m_health < m_maxHealth * m_retreatHealthThreshold) {
+        if (getHealthPercentage() < m_retreatHealthThreshold) {
             enterState(State::RETREAT);
         } else {
             enterState(State::ATTACK);
@@ -304,7 +479,7 @@ void AIConstruct::updateAttackState(float deltaTime, const glm::vec3& playerPosi
     }
     
     // Check if health is low
-    if (m_health < m_maxHealth * m_retreatHealthThreshold) {
+    if (getHealthPercentage() < m_retreatHealthThreshold) {
         enterState(State::RETREAT);
         return;
     }
@@ -352,7 +527,7 @@ void AIConstruct::updateDamagedState(float deltaTime, const glm::vec3& playerPos
         // Determine next state based on health and player distance
         float distanceToPlayer = glm::distance(m_position, playerPosition);
         
-        if (m_health < m_maxHealth * m_retreatHealthThreshold) {
+        if (getHealthPercentage() < m_retreatHealthThreshold) {
             enterState(State::RETREAT);
         } else if (distanceToPlayer <= m_detectionRange) {
             enterState(State::ATTACK);
@@ -388,7 +563,8 @@ void AIConstruct::performAttack(const glm::vec3& targetPosition) {
 
 float AIConstruct::calculateAttackDamage() const {
     // Base damage with small random variation
-    return m_attackDamage * glm::linearRand(0.9f, 1.1f);
+    return m_attackDamage * glm::linearRand(AIConstructConstants::ATTACK_DAMAGE_RANDOM_MIN, 
+                                            AIConstructConstants::ATTACK_DAMAGE_RANDOM_MAX);
 }
 
 void AIConstruct::moveTowards(const glm::vec3& target, float deltaTime) {
@@ -494,43 +670,6 @@ void AIConstruct::createStateParticles() {
     );
 }
 
-void AIConstruct::createDamageParticles(const glm::vec3& damageSource) {
-    if (!m_particleSystem) {
-        return;
-    }
-    
-    // Calculate direction from damage source
-    glm::vec3 direction = glm::normalize(m_position - damageSource);
-    
-    // Create particles for damage
-    glm::vec4 particleColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f); // Bright red
-    int particleCount = 20;
-    float particleSpeed = 5.0f;
-    float particleLife = 0.5f;
-    
-    // Spawn particles at construct position, moving away from damage source
-    for (int i = 0; i < particleCount; ++i) {
-        glm::vec3 offset = glm::sphericalRand(0.5f);
-        glm::vec3 particlePos = m_position + offset;
-        
-        // Create velocity vector (mostly in direction away from damage, with some spread)
-        glm::vec3 particleDir = direction + glm::sphericalRand(0.5f);
-        particleDir = glm::normalize(particleDir);
-        
-        float speed = particleSpeed * glm::linearRand(0.8f, 1.2f);
-        
-        // Create and spawn particle
-        Particle p(
-            particlePos,
-            particleDir * speed,
-            particleColor,
-            particleLife * glm::linearRand(0.8f, 1.2f)
-        );
-        
-        m_particleSystem->spawnParticle(p);
-    }
-}
-
 void AIConstruct::createAttackParticles(const glm::vec3& targetPosition) {
     if (!m_particleSystem) {
         return;
@@ -584,16 +723,18 @@ void AIConstruct::createAttackParticles(const glm::vec3& targetPosition) {
         // Create slight spread in direction
         glm::vec3 particleDir = direction;
         if (m_type != Type::SENTRY) { // Sentries have straight beams
-            particleDir += glm::sphericalRand(0.2f);
+            particleDir += glm::sphericalRand(AIConstructConstants::PARTICLE_SPREAD_RADIUS);
             particleDir = glm::normalize(particleDir);
         }
         
         // Vary speed and lifetime slightly
-        float speed = particleSpeed * glm::linearRand(0.9f, 1.1f);
-        float lifetime = particleLife * glm::linearRand(0.9f, 1.1f);
+        float speed = particleSpeed * glm::linearRand(AIConstructConstants::PARTICLE_SPEED_RANDOM_MIN, 
+                                                    AIConstructConstants::PARTICLE_SPEED_RANDOM_MAX);
+        float lifetime = particleLife * glm::linearRand(AIConstructConstants::PARTICLE_LIFETIME_RANDOM_MIN, 
+                                                    AIConstructConstants::PARTICLE_LIFETIME_RANDOM_MAX);
         
         // Create starting position slightly offset from construct
-        glm::vec3 startPos = m_position + (direction * 0.5f);
+        glm::vec3 startPos = m_position + (direction * AIConstructConstants::PARTICLE_OFFSET_MULTIPLIER);
         
         // Create and spawn particle
         Particle p(
@@ -610,9 +751,17 @@ void AIConstruct::createAttackParticles(const glm::vec3& targetPosition) {
 void AIConstruct::updateDebugInfo() {
     std::stringstream ss;
     ss << "Type: " << static_cast<int>(m_type)
-       << " | State: " << static_cast<int>(m_currentState)
-       << " | Health: " << static_cast<int>(m_health) << "/" << static_cast<int>(m_maxHealth)
-       << " | Pos: (" << std::fixed << std::setprecision(1) << m_position.x
+       << " | State: " << static_cast<int>(m_currentState);
+       
+    // Add health info if available
+    if (m_healthComponent) {
+        std::string healthInfo = m_healthComponent->getDebugInfo();
+        if (!healthInfo.empty()) {
+            ss << " | " << healthInfo;
+        }
+    }
+    
+    ss << " | Pos: (" << std::fixed << std::setprecision(1) << m_position.x
        << ", " << m_position.y << ", " << m_position.z << ")";
     
     if (m_currentAttackCooldown > 0.0f) {

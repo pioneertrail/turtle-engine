@@ -12,6 +12,31 @@ class Shader;
 
 namespace Combat {
 
+namespace PlasmaWeaponConstants {
+    constexpr float DEFAULT_MAX_CHARGE = 100.0f;
+    constexpr float DEFAULT_CHARGE_RATE = 50.0f;  // units/sec
+    constexpr float DEFAULT_COOLDOWN_TIME = 0.5f; // seconds
+    constexpr float MIN_FIRE_CHARGE = 10.0f;
+    constexpr float QUICK_FIRE_POWER = 0.4f;
+    constexpr float QUICK_FIRE_COOLDOWN_MULTIPLIER = 0.7f;
+    constexpr float POWER_MIN_NORMALIZATION = 0.2f;
+    constexpr float POWER_MAX_NORMALIZATION = 1.0f;
+    constexpr float POWER_RANGE_NORMALIZATION = POWER_MAX_NORMALIZATION - POWER_MIN_NORMALIZATION;
+    constexpr int   BASE_PARTICLE_COUNT = 30;
+    constexpr int   POWER_PARTICLE_MULTIPLIER = 70;
+    constexpr float BURST_SPREAD_DEGREES = 15.0f;
+    constexpr float BEAM_SPREAD_DEGREES = 5.0f;
+    constexpr float CHARGED_SPREAD_DEGREES = 10.0f;
+    constexpr float SCATTER_SPREAD_DEGREES = 30.0f;
+    constexpr float BEAM_PARTICLE_MULTIPLIER = 1.5f;
+    constexpr float CHARGED_PARTICLE_MULTIPLIER = 2.0f;
+    constexpr float SCATTER_PARTICLE_MULTIPLIER = 0.8f;
+    constexpr float PARTICLE_VELOCITY_RANDOM_MIN = 0.8f;
+    constexpr float PARTICLE_VELOCITY_RANDOM_MAX = 1.2f;
+    constexpr float PARTICLE_LIFETIME_RANDOM_MIN = 0.8f;
+    constexpr float PARTICLE_LIFETIME_RANDOM_MAX = 1.2f;
+}
+
 /**
  * @class PlasmaWeapon
  * @brief Represents a plasma-based weapon used primarily by the Flammyx tribe
@@ -32,21 +57,16 @@ public:
 
     /**
      * @brief Construct a new Plasma Weapon with default parameters
+     * @param particleSystem Shared pointer to the particle system to use
      * @param maxCharge Maximum charge level this weapon can achieve
      */
-    PlasmaWeapon(float maxCharge = 100.0f);
+    PlasmaWeapon(std::shared_ptr<ParticleSystem> particleSystem, 
+                 float maxCharge = PlasmaWeaponConstants::DEFAULT_MAX_CHARGE);
     
     /**
      * @brief Destructor
      */
     ~PlasmaWeapon();
-
-    /**
-     * @brief Initialize the weapon with a particle system for visual effects
-     * @param particleSystem Shared pointer to the particle system to use
-     * @return True if initialization was successful
-     */
-    bool initialize(std::shared_ptr<ParticleSystem> particleSystem);
 
     /**
      * @brief Update the weapon state (charging, cooling down, etc.)

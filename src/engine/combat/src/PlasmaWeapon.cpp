@@ -7,12 +7,13 @@
 namespace TurtleEngine {
 namespace Combat {
 
-PlasmaWeapon::PlasmaWeapon(float maxCharge)
-    : m_firingMode(FiringMode::BURST),
+PlasmaWeapon::PlasmaWeapon(std::shared_ptr<ParticleSystem> particleSystem, float maxCharge)
+    : m_particleSystem(particleSystem),
+      m_firingMode(FiringMode::BURST),
       m_currentCharge(0.0f),
       m_maxCharge(maxCharge),
-      m_chargeRate(50.0f),          // Charge 50 units per second
-      m_cooldownTime(0.5f),         // 0.5 seconds cooldown between shots
+      m_chargeRate(PlasmaWeaponConstants::DEFAULT_CHARGE_RATE),
+      m_cooldownTime(PlasmaWeaponConstants::DEFAULT_COOLDOWN_TIME),
       m_currentCooldown(0.0f),
       m_isCharging(false),
       m_plasmaColor(1.0f, 0.7f, 0.1f, 1.0f), // Orange-yellow plasma
@@ -21,22 +22,15 @@ PlasmaWeapon::PlasmaWeapon(float maxCharge)
       m_particleVelocity(15.0f),
       m_debugVisualizationEnabled(false) {
 
-    std::cout << "[PlasmaWeapon] Initialized with max charge: " << m_maxCharge << std::endl;
+    if (!m_particleSystem) {
+        std::cerr << "[PlasmaWeapon] Error: Null particle system provided during construction!" << std::endl;
+        // Consider throwing an exception or setting an error state
+    }
+    std::cout << "[PlasmaWeapon] Constructed with max charge: " << m_maxCharge << std::endl;
 }
 
 PlasmaWeapon::~PlasmaWeapon() {
     std::cout << "[PlasmaWeapon] Destroyed" << std::endl;
-}
-
-bool PlasmaWeapon::initialize(std::shared_ptr<ParticleSystem> particleSystem) {
-    if (!particleSystem) {
-        std::cerr << "[PlasmaWeapon] Error: Null particle system provided!" << std::endl;
-        return false;
-    }
-
-    m_particleSystem = particleSystem;
-    std::cout << "[PlasmaWeapon] Successfully initialized with particle system" << std::endl;
-    return true;
 }
 
 void PlasmaWeapon::update(float deltaTime) {
@@ -85,7 +79,7 @@ bool PlasmaWeapon::fire(const glm::vec3& origin, const glm::vec3& direction) {
         return false;
     }
 
-    if (m_currentCharge < 10.0f) {
+    if (m_currentCharge < PlasmaWeaponConstants::MIN_FIRE_CHARGE) {
         // Minimum charge required for firing
         std::cout << "[PlasmaWeapon] Cannot fire - insufficient charge: " 
                   << m_currentCharge << "/" << m_maxCharge << std::endl;
@@ -93,7 +87,9 @@ bool PlasmaWeapon::fire(const glm::vec3& origin, const glm::vec3& direction) {
     }
 
     // Determine power based on charge level (normalized to 0.2-1.0 range)
-    float power = 0.2f + (0.8f * (m_currentCharge / m_maxCharge));
+    float normalizedCharge = (m_maxCharge > 0.0f) ? (m_currentCharge / m_maxCharge) : 1.0f;
+    float power = PlasmaWeaponConstants::POWER_MIN_NORMALIZATION + 
+                  (PlasmaWeaponConstants::POWER_RANGE_NORMALIZATION * normalizedCharge);
     
     std::cout << "[PlasmaWeapon] Firing with power: " << power 
               << " (" << m_currentCharge << "/" << m_maxCharge << ")" << std::endl;
@@ -120,13 +116,13 @@ bool PlasmaWeapon::quickFire(const glm::vec3& origin, const glm::vec3& direction
     std::cout << "[PlasmaWeapon] Quick-firing with Flammil gesture" << std::endl;
     
     // Quick-fire always uses a minimum power level
-    float power = 0.4f;
+    float power = PlasmaWeaponConstants::QUICK_FIRE_POWER;
     
     // Create visual effect with quick-fire parameters
     createPlasmaParticles(origin, direction, power);
     
     // Set cooldown (reduced for quick-fire)
-    m_currentCooldown = m_cooldownTime * 0.7f;
+    m_currentCooldown = m_cooldownTime * PlasmaWeaponConstants::QUICK_FIRE_COOLDOWN_MULTIPLIER;
     
     return true;
 }
@@ -186,33 +182,35 @@ void PlasmaWeapon::createPlasmaParticles(const glm::vec3& origin, const glm::vec
     }
 
     // Calculate parameters based on power level and firing mode
-    int particleCount = static_cast<int>(30 + (power * 70)); // 30-100 particles
+    int particleCount = static_cast<int>(PlasmaWeaponConstants::BASE_PARTICLE_COUNT + 
+                                         (power * PlasmaWeaponConstants::POWER_PARTICLE_MULTIPLIER));
     float spreadAngle = 0.0f;
     
     switch (m_firingMode) {
         case FiringMode::BURST:
-            spreadAngle = glm::radians(15.0f); // 15-degree spread
+            spreadAngle = glm::radians(PlasmaWeaponConstants::BURST_SPREAD_DEGREES);
             break;
             
         case FiringMode::BEAM:
-            spreadAngle = glm::radians(5.0f); // 5-degree spread (tight beam)
-            particleCount = static_cast<int>(particleCount * 1.5f); // More particles for beam
+            spreadAngle = glm::radians(PlasmaWeaponConstants::BEAM_SPREAD_DEGREES);
+            particleCount = static_cast<int>(particleCount * PlasmaWeaponConstants::BEAM_PARTICLE_MULTIPLIER);
             break;
             
         case FiringMode::CHARGED:
-            spreadAngle = glm::radians(10.0f); // 10-degree spread
-            particleCount = static_cast<int>(particleCount * 2.0f); // More particles for charged shot
+            spreadAngle = glm::radians(PlasmaWeaponConstants::CHARGED_SPREAD_DEGREES);
+            particleCount = static_cast<int>(particleCount * PlasmaWeaponConstants::CHARGED_PARTICLE_MULTIPLIER);
             break;
             
         case FiringMode::SCATTER:
-            spreadAngle = glm::radians(30.0f); // 30-degree spread (wide scatter)
-            particleCount = static_cast<int>(particleCount * 0.8f); // Fewer particles for scatter
+            spreadAngle = glm::radians(PlasmaWeaponConstants::SCATTER_SPREAD_DEGREES);
+            particleCount = static_cast<int>(particleCount * PlasmaWeaponConstants::SCATTER_PARTICLE_MULTIPLIER);
             break;
     }
     
     // Apply power adjustments
     float velocity = m_particleVelocity * power;
-    float size = m_particleSize * (0.8f + (power * 0.4f)); // Size increases with power
+    float size = m_particleSize * (PlasmaWeaponConstants::PARTICLE_LIFETIME_RANDOM_MIN + 
+                                  (power * (PlasmaWeaponConstants::POWER_RANGE_NORMALIZATION / 2.0f))); // Size increases with power
     
     // Create a normalized direction vector
     glm::vec3 normDirection = glm::normalize(direction);
@@ -237,14 +235,16 @@ void PlasmaWeapon::createPlasmaParticles(const glm::vec3& origin, const glm::vec
         particleDir = glm::normalize(particleDir + (up * glm::tan(angle2)));
         
         // Random velocity variation (80%-120% of base velocity)
-        float particleVelocity = velocity * glm::linearRand(0.8f, 1.2f);
+        float particleVelocity = velocity * glm::linearRand(PlasmaWeaponConstants::PARTICLE_VELOCITY_RANDOM_MIN, 
+                                                         PlasmaWeaponConstants::PARTICLE_VELOCITY_RANDOM_MAX);
         
         // Create particle
         Particle plasma(
             origin,                                // Position
             particleDir * particleVelocity,       // Velocity
             m_plasmaColor,                        // Color
-            m_particleLifetime * glm::linearRand(0.8f, 1.2f) // Lifetime with variation
+            m_particleLifetime * glm::linearRand(PlasmaWeaponConstants::PARTICLE_LIFETIME_RANDOM_MIN, 
+                                                 PlasmaWeaponConstants::PARTICLE_LIFETIME_RANDOM_MAX) // Lifetime with variation
         );
         
         m_particleSystem->spawnParticle(plasma);

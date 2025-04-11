@@ -6,9 +6,74 @@
 #include <string>
 #include <functional>
 #include "ParticleSystem.hpp"
+#include "HealthSystem.hpp"
 
 namespace TurtleEngine {
 namespace Combat {
+
+namespace AIConstructConstants {
+    // Default values
+    constexpr float DEFAULT_HEALTH = 100.0f;
+    constexpr float DEFAULT_ATTACK_DAMAGE = 10.0f;
+    constexpr float DEFAULT_ATTACK_COOLDOWN = 2.0f;
+    constexpr float DEFAULT_ATTACK_RANGE = 5.0f;
+    constexpr float DEFAULT_DETECTION_RANGE = 10.0f;
+    constexpr float DEFAULT_RETREAT_THRESHOLD = 0.3f;
+    constexpr float DEFAULT_MOVEMENT_SPEED = 3.0f;
+    
+    // Sentry specific
+    constexpr float SENTRY_ATTACK_RANGE = 15.0f;
+    constexpr float SENTRY_DETECTION_RANGE = 20.0f;
+    constexpr float SENTRY_MOVEMENT_SPEED = 1.0f;
+    constexpr float SENTRY_ATTACK_DAMAGE = 15.0f;
+    constexpr float SENTRY_ATTACK_COOLDOWN = 3.0f;
+    constexpr float SENTRY_PLASMA_RESISTANCE = 0.5f;
+    
+    // Hunter specific
+    constexpr float HUNTER_ATTACK_RANGE = 5.0f;
+    constexpr float HUNTER_DETECTION_RANGE = 25.0f;
+    constexpr float HUNTER_MOVEMENT_SPEED = 6.0f;
+    constexpr float HUNTER_ATTACK_DAMAGE = 20.0f;
+    constexpr float HUNTER_ATTACK_COOLDOWN = 1.0f;
+    constexpr float HUNTER_PHYSICAL_RESISTANCE = 0.2f;
+    
+    // Guardian specific
+    constexpr float GUARDIAN_ATTACK_RANGE = 8.0f;
+    constexpr float GUARDIAN_DETECTION_RANGE = 15.0f;
+    constexpr float GUARDIAN_MOVEMENT_SPEED = 2.0f;
+    constexpr float GUARDIAN_ATTACK_DAMAGE = 10.0f;
+    constexpr float GUARDIAN_ATTACK_COOLDOWN = 2.0f;
+    constexpr float GUARDIAN_HEALTH_MULTIPLIER = 2.0f;
+    constexpr float GUARDIAN_PHYSICAL_RESISTANCE = 0.4f;
+    constexpr float GUARDIAN_SHIELD = 50.0f;
+    constexpr float GUARDIAN_FLAT_REDUCTION = 5.0f;
+    
+    // Swarm specific
+    constexpr float SWARM_ATTACK_RANGE = 3.0f;
+    constexpr float SWARM_DETECTION_RANGE = 12.0f;
+    constexpr float SWARM_MOVEMENT_SPEED = 8.0f;
+    constexpr float SWARM_ATTACK_DAMAGE = 5.0f;
+    constexpr float SWARM_ATTACK_COOLDOWN = 0.5f;
+    constexpr float SWARM_HEALTH_MULTIPLIER = 0.5f;
+    
+    // State Timers
+    constexpr float IDLE_STATE_BASE_TIME = 2.0f;
+    constexpr float IDLE_STATE_RANDOM_TIME = 1.0f;
+    constexpr float RETREAT_STATE_TIME = 5.0f;
+    constexpr float DAMAGED_STATE_TIME = 0.5f;
+    
+    // Attack calculation
+    constexpr float ATTACK_DAMAGE_RANDOM_MIN = 0.9f;
+    constexpr float ATTACK_DAMAGE_RANDOM_MAX = 1.1f;
+    
+    // Particle related
+    constexpr float PARTICLE_SPREAD_RADIUS = 0.2f;
+    constexpr float PARTICLE_SPEED_RANDOM_MIN = 0.9f;
+    constexpr float PARTICLE_SPEED_RANDOM_MAX = 1.1f;
+    constexpr float PARTICLE_LIFETIME_RANDOM_MIN = 0.9f;
+    constexpr float PARTICLE_LIFETIME_RANDOM_MAX = 1.1f;
+    constexpr float PARTICLE_OFFSET_MULTIPLIER = 0.5f;
+}
 
 /**
  * @class AIConstruct
@@ -39,25 +104,32 @@ public:
 
     /**
      * @brief Construct a new AI Construct with default parameters
+     * @param particleSystem Shared pointer to the particle system to use
      * @param type Type of AI construct
      * @param position Initial position
      * @param health Initial health
      */
-    AIConstruct(Type type = Type::SENTRY, 
+    AIConstruct(std::shared_ptr<ParticleSystem> particleSystem,
+                Type type = Type::SENTRY,
                 const glm::vec3& position = glm::vec3(0.0f),
-                float health = 100.0f);
+                float health = AIConstructConstants::DEFAULT_HEALTH);
+    
+    /**
+     * @brief Construct a new AI Construct with Graphics::ParticleSystem
+     * @param particleSystem Shared pointer to the particle system to use
+     * @param type Type of AI construct
+     * @param position Initial position
+     * @param health Initial health
+     */
+    AIConstruct(std::shared_ptr<Graphics::ParticleSystem> particleSystem,
+                Type type = Type::SENTRY,
+                const glm::vec3& position = glm::vec3(0.0f),
+                float health = AIConstructConstants::DEFAULT_HEALTH);
     
     /**
      * @brief Destructor
      */
     ~AIConstruct();
-
-    /**
-     * @brief Initialize the AI construct with a particle system for visual effects
-     * @param particleSystem Shared pointer to the particle system to use
-     * @return True if initialization was successful
-     */
-    bool initialize(std::shared_ptr<ParticleSystem> particleSystem);
 
     /**
      * @brief Update the AI construct state and position
@@ -80,6 +152,13 @@ public:
      * @return True if construct is still alive, false if destroyed
      */
     bool applyDamage(float amount, const glm::vec3& damageSource);
+    
+    /**
+     * @brief Apply detailed damage to the construct
+     * @param damage Detailed damage information
+     * @return True if construct is still alive, false if destroyed
+     */
+    bool applyDamage(const DamageInfo& damage);
 
     /**
      * @brief Get the current position of the construct
@@ -97,13 +176,31 @@ public:
      * @brief Get the current health of the construct
      * @return Current health value
      */
-    float getHealth() const { return m_health; }
+    float getHealth() const;
+    
+    /**
+     * @brief Get the maximum health of the construct
+     * @return Maximum health value
+     */
+    float getMaxHealth() const;
+    
+    /**
+     * @brief Get health as percentage
+     * @return Health percentage from 0.0 to 1.0
+     */
+    float getHealthPercentage() const;
 
     /**
      * @brief Check if the construct is alive
      * @return True if health > 0
      */
-    bool isAlive() const { return m_health > 0.0f; }
+    bool isAlive() const;
+    
+    /**
+     * @brief Get access to the construct's health component
+     * @return Reference to health component
+     */
+    HealthComponent& getHealthComponent() { return *m_healthComponent; }
 
     /**
      * @brief Add a patrol point for the construct to follow
@@ -162,12 +259,16 @@ private:
 
     // Visual effect methods
     void createStateParticles();
-    void createDamageParticles(const glm::vec3& damageSource);
     void createAttackParticles(const glm::vec3& targetPosition);
     void updateDebugInfo();
+    
+    // Health system callbacks
+    void onDamageTaken(const DamageInfo& damage, float actualDamage);
+    void onDeath();
 
     // Type-specific initialization
     void initializeTypeProperties();
+    void setupResistances();
 
     // Basic properties
     Type m_type;
@@ -175,8 +276,6 @@ private:
     glm::vec3 m_position;
     glm::vec3 m_velocity;
     glm::vec3 m_forward;
-    float m_health;
-    float m_maxHealth;
     float m_attackDamage;
     float m_attackCooldown;
     float m_currentAttackCooldown;
@@ -197,6 +296,9 @@ private:
     // Visuals
     std::shared_ptr<ParticleSystem> m_particleSystem;
     glm::vec4 m_constructColor;
+    
+    // Health system
+    std::unique_ptr<HealthComponent> m_healthComponent;
 
     // Callback for state changes
     std::function<void(State, State)> m_stateChangeCallback;
