@@ -146,6 +146,22 @@ if(BUILD_TESTS)
     #         endif()
     #     endforeach()
     # endif()
+
+    # Add particle system test
+    add_executable(ParticleSystemTest
+        src/tests/graphics/ParticleSystemTest.cpp
+    )
+
+    target_link_libraries(ParticleSystemTest
+        PRIVATE
+        TurtleEngine
+        gtest
+        gtest_main
+        ${OPENGL_LIBRARIES}
+        ${GLFW_LIBRARIES}
+    )
+
+    add_test(NAME ParticleSystemTest COMMAND ParticleSystemTest)
 endif()
 
 # After all targets are defined, add the DLL copy commands
@@ -188,6 +204,12 @@ if(OpenCV_BIN_DIR AND EXISTS "${OpenCV_BIN_DIR}") # Check if vcpkg provided the 
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 ${DLL}
                 $<TARGET_FILE_DIR:ComboTest>)
+        endif()
+        if (TARGET ParticleSystemTest)
+            add_custom_command(TARGET ParticleSystemTest POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${DLL}
+                $<TARGET_FILE_DIR:ParticleSystemTest>)
         endif()
     endforeach()
 endif()
