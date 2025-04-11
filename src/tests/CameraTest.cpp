@@ -23,9 +23,19 @@ int main() {
         char c = (char)cv::waitKey(1);
         if (c == 27) // ESC key
             break;
+        
+        // Check if window was closed by user clicking X
+        if (cv::getWindowProperty("Camera Test", cv::WND_PROP_VISIBLE) < 1) {
+            std::cout << "Window closed by user" << std::endl;
+            break;
+        }
     }
     
     cap.release();
     cv::destroyAllWindows();
+    
+    // Ensure the program exits completely
+    std::cout << "Camera test exiting" << std::endl;
+    cv::waitKey(100); // Small delay to ensure cleanup
     return 0;
 } 

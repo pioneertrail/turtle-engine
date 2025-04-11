@@ -1,11 +1,13 @@
-#include "../../engine/graphics/include/ParticleSystem.hpp"
+#include "../../engine/include/ParticleSystem.hpp"
 #include <gtest/gtest.h>
 #include <chrono>
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
-using namespace TurtleEngine::Graphics;
+using namespace TurtleEngine;
 
 class ParticleSystemTest : public ::testing::Test {
 protected:
@@ -14,6 +16,20 @@ protected:
         // Note: This should be handled by your test framework
         system = std::make_unique<ParticleSystem>(10000);
         system->initialize();
+        
+        // Create view and projection matrices for rendering
+        view = glm::lookAt(
+            glm::vec3(0.0f, 0.0f, 10.0f),  // Camera position
+            glm::vec3(0.0f, 0.0f, 0.0f),   // Look at origin
+            glm::vec3(0.0f, 1.0f, 0.0f)    // Up vector
+        );
+        
+        projection = glm::perspective(
+            glm::radians(45.0f),  // FOV
+            16.0f / 9.0f,         // Aspect ratio
+            0.1f,                 // Near plane
+            100.0f                // Far plane
+        );
     }
 
     void logPerformanceMetrics(const std::string& testName, 
@@ -31,26 +47,27 @@ protected:
     }
 
     std::unique_ptr<ParticleSystem> system;
+    glm::mat4 view;
+    glm::mat4 projection;
 };
 
 TEST_F(ParticleSystemTest, RenderTimeTest) {
     const size_t particleCounts[] = {100, 1000, 10000};
-    const bool highContrastModes[] = {false, true};
+    const bool highContrastModes[] = {false, true}; // We'll test with and without high contrast
     
     for (size_t count : particleCounts) {
         for (bool highContrast : highContrastModes) {
-            system->setMaxParticles(count);
-            system->setHighContrastMode(highContrast);
+            // Create a new system with the desired particle count
+            system = std::make_unique<ParticleSystem>(count);
+            system->initialize();
             
             // Emit test particles in a burst
-            system->emitBurst(
-                glm::vec3(0.0f), // center position
+            system->spawnBurst(
                 count,           // particle count
-                1.0f,           // min velocity
-                2.0f,           // max velocity
-                glm::vec4(1.0f), // white color
-                1.0f,           // size
-                5.0f            // life
+                glm::vec3(0.0f), // center position
+                2.0f,           // initial velocity
+                5.0f,           // life
+                highContrast ? glm::vec4(1.0f, 1.0f, 1.0f, 1.0f) : glm::vec4(1.0f, 0.5f, 0.0f, 1.0f) // color (white for high contrast)
             );
             
             // Measure render time
@@ -60,7 +77,7 @@ TEST_F(ParticleSystemTest, RenderTimeTest) {
             const int FRAMES = 100;
             for (int i = 0; i < FRAMES; ++i) {
                 system->update(1.0f / 60.0f);
-                system->render();
+                system->render(view, projection);
             }
             
             auto end = std::chrono::high_resolution_clock::now();
@@ -71,20 +88,13 @@ TEST_F(ParticleSystemTest, RenderTimeTest) {
             std::string testName = "Particle_" + std::to_string(count) + 
                                  (highContrast ? "_HighContrast" : "_Normal");
             logPerformanceMetrics(testName, averageRenderTime, count, highContrast);
-            
-            // Visual artifact check
-            if (highContrast) {
-                system->enableDebugView(true);
-                system->render(); // Render one frame with debug view
-                // Note: Manual inspection required for visual artifacts
-            }
         }
     }
 }
 
-TEST_F(ParticleSystemTest, HighContrastVisualTest) {
-    system->setMaxParticles(1000);
-    system->setHighContrastMode(true);
+TEST_F(ParticleSystemTest, VisualTest) {
+    system = std::make_unique<ParticleSystem>(1000);
+    system->initialize();
     
     // Create a test pattern
     const float positions[][3] = {
@@ -94,21 +104,20 @@ TEST_F(ParticleSystemTest, HighContrastVisualTest) {
     };
     
     for (const auto& pos : positions) {
-        system->emit(
-            glm::vec3(pos[0], pos[1], pos[2]),
-            glm::vec3(0.0f),
-            glm::vec4(1.0f),
-            2.0f,
-            10.0f
+        Particle p(
+            glm::vec3(pos[0], pos[1], pos[2]),  // position
+            glm::vec3(0.0f),                    // velocity
+            glm::vec4(1.0f),                    // color (white)
+            10.0f                               // life
         );
+        system->spawnParticle(p);
     }
     
-    // Enable debug view for visual inspection
-    system->enableDebugView(true);
-    system->render();
+    // Render for visual inspection
+    system->render(view, projection);
     
-    // Note: This test requires manual inspection of the debug view
-    std::cout << "\nHigh Contrast Visual Test:\n"
+    // Note: This test requires manual inspection
+    std::cout << "\nVisual Test:\n"
               << "Please verify:\n"
               << "1. Particles are clearly visible\n"
               << "2. No visual artifacts\n"
@@ -116,25 +125,21 @@ TEST_F(ParticleSystemTest, HighContrastVisualTest) {
               << "4. Depth testing works correctly\n";
 }
 
-TEST_F(ParticleSystemTest, BatchSizeOptimization) {
-    const size_t batchSizes[] = {100, 500, 1000, 2000};
+TEST_F(ParticleSystemTest, PerformanceTest) {
+    const size_t particleCounts[] = {100, 1000, 10000};
     const size_t particleCount = 10000;
     
-    system->setMaxParticles(particleCount);
-    system->setInstancingEnabled(false); // Test batched rendering
-    
-    for (size_t batchSize : batchSizes) {
-        system->setBatchSize(batchSize);
+    for (size_t count : particleCounts) {
+        system = std::make_unique<ParticleSystem>(count);
+        system->initialize();
         
         // Emit test particles
-        system->emitBurst(
+        system->spawnBurst(
+            count,
             glm::vec3(0.0f),
-            particleCount,
             1.0f,
-            2.0f,
-            glm::vec4(1.0f),
-            1.0f,
-            5.0f
+            5.0f,
+            glm::vec4(1.0f)
         );
         
         // Measure render time
@@ -143,15 +148,15 @@ TEST_F(ParticleSystemTest, BatchSizeOptimization) {
         const int FRAMES = 100;
         for (int i = 0; i < FRAMES; ++i) {
             system->update(1.0f / 60.0f);
-            system->render();
+            system->render(view, projection);
         }
         
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration<double, std::milli>(end - start);
         double averageRenderTime = duration.count() / FRAMES;
         
-        std::string testName = "BatchSize_" + std::to_string(batchSize);
-        logPerformanceMetrics(testName, averageRenderTime, particleCount, false);
+        std::string testName = "ParticleCount_" + std::to_string(count);
+        logPerformanceMetrics(testName, averageRenderTime, count, false);
     }
 }
 
