@@ -12,6 +12,24 @@
 namespace TurtleEngine {
 namespace Input {
 
+// --- Constants ---
+namespace GestureConstants {
+    constexpr float DEFAULT_SENSITIVITY = 1.0f;
+    constexpr float DEFAULT_MIN_CONFIDENCE = 0.7f;
+    constexpr float KHARGAIL_THRESHOLD = 0.75f;
+    constexpr float FLAMMIL_THRESHOLD = 0.80f;
+    constexpr float STASAI_THRESHOLD = 0.85f;
+    constexpr float ANNIHLAT_THRESHOLD = 0.70f;
+    // Angle/Straightness thresholds (Consider making these configurable)
+    constexpr float SWIPE_STRAIGHTNESS_THRESHOLD = 0.8f;
+    constexpr float HORIZONTAL_ANGLE_THRESHOLD = 30.0f;
+    constexpr float FLAMMIL_ANGLE_MIN = 30.0f;
+    constexpr float FLAMMIL_ANGLE_MAX = 60.0f;
+    constexpr float ANNIHLAT_ANGLE_MIN = -60.0f;
+    constexpr float ANNIHLAT_ANGLE_MAX = -30.0f;
+    constexpr float CIRCULARITY_THRESHOLD = 0.7f;
+}
+
 enum class GestureType {
     NONE,
     KHARGAIL,    // Left-right charge
@@ -62,7 +80,7 @@ public:
     // Set gesture recognition parameters
     void setSensitivity(float sensitivity);
     void setMinConfidence(float minConfidence);
-    float getMinConfidence() const { return minConfidence_; }
+    float getMinConfidence() const { return m_minConfidence; }
 
     // Combo and transition tracking
     ComboTransition getLastTransition() const { return m_lastTransition; }
@@ -72,10 +90,10 @@ public:
     void setGestureThreshold(GestureType type, float threshold);
 
     // Debug visualization methods
-    void setDebugMode(bool enabled) { debugMode_ = enabled; }
-    bool isDebugMode() const { return debugMode_; }
-    void setDebugLogLevel(int level) { debugLogLevel_ = level; }
-    int getDebugLogLevel() const { return debugLogLevel_; }
+    void setDebugMode(bool enabled) { m_debugMode = enabled; }
+    bool isDebugMode() const { return m_debugMode; }
+    void setDebugLogLevel(int level) { m_debugLogLevel = level; }
+    int getDebugLogLevel() const { return m_debugLogLevel; }
     const std::vector<cv::Point2f>& getDebugPoints() const { return m_debugPoints; }
 
     // Test automation methods
@@ -106,8 +124,8 @@ private:
     std::vector<float> normalizeVelocities(const std::vector<float>& rawVelocities) const;
 
     // Member variables
-    float sensitivity_;
-    float minConfidence_;
+    float m_sensitivity;
+    float m_minConfidence;
     std::vector<cv::Point2f> m_previousPoints;
     GestureResult m_lastGesture;
     GestureResult m_lastRecognizedGesture;
@@ -119,8 +137,8 @@ private:
     float m_circleClosureThreshold;
     
     // Debug and test state
-    bool debugMode_ = false;
-    int debugLogLevel_ = 0;
+    bool m_debugMode = false;
+    int m_debugLogLevel = 0;
     bool m_testMode = false;
     std::vector<cv::Point2f> m_debugPoints;
     std::vector<float> m_debugConfidences;

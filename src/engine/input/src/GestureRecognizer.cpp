@@ -21,29 +21,19 @@
 #define GESTURE_DEBUG_LOG(x) 
 #endif
 
-// Fast square root approximation with Newton-Raphson iteration
-inline float fastSqrt(float number) {
-    if (number <= 0.0f) return 0.0f; // Handle zero/negative
-    union { float f; int i; } u;
-    u.f = number;
-    u.i = 0x5f3759df - (u.i >> 1); // Initial guess for 1/sqrt(x)
-    u.f = u.f * (1.5f - (0.5f * number * u.f * u.f)); // Newton-Raphson step for 1/sqrt(x)
-    return number * u.f; // Convert 1/sqrt(x) to sqrt(x)
-}
-
 namespace TurtleEngine {
 namespace Input {
 
 GestureRecognizer::GestureRecognizer()
-    : sensitivity_(1.0f)
-    , minConfidence_(0.7f)
-    , debugMode_(false)
-    , debugLogLevel_(0)
+    : m_sensitivity(GestureConstants::DEFAULT_SENSITIVITY)
+    , m_minConfidence(GestureConstants::DEFAULT_MIN_CONFIDENCE)
+    , m_debugMode(false)
+    , m_debugLogLevel(0)
 {
-    m_gestureThresholds[GestureType::KHARGAIL] = 0.75f;
-    m_gestureThresholds[GestureType::FLAMMIL] = 0.80f;
-    m_gestureThresholds[GestureType::STASAI] = 0.85f;
-    m_gestureThresholds[GestureType::ANNIHLAT] = 0.70f;
+    m_gestureThresholds[GestureType::KHARGAIL] = GestureConstants::KHARGAIL_THRESHOLD;
+    m_gestureThresholds[GestureType::FLAMMIL] = GestureConstants::FLAMMIL_THRESHOLD;
+    m_gestureThresholds[GestureType::STASAI] = GestureConstants::STASAI_THRESHOLD;
+    m_gestureThresholds[GestureType::ANNIHLAT] = GestureConstants::ANNIHLAT_THRESHOLD;
 }
 
 GestureRecognizer::~GestureRecognizer() = default;
@@ -54,13 +44,13 @@ void GestureRecognizer::initialize() {
 }
 
 void GestureRecognizer::setSensitivity(float sensitivity) {
-    sensitivity_ = std::max(0.0f, std::min(1.0f, sensitivity));
-    logDebugInfo("Sensitivity set to: " + std::to_string(sensitivity_), 2);
+    m_sensitivity = std::max(0.0f, std::min(1.0f, sensitivity));
+    logDebugInfo("Sensitivity set to: " + std::to_string(m_sensitivity), 2);
 }
 
 void GestureRecognizer::setMinConfidence(float minConfidence) {
-    minConfidence_ = std::max(0.0f, std::min(1.0f, minConfidence));
-    logDebugInfo("Minimum confidence set to: " + std::to_string(minConfidence_), 2);
+    m_minConfidence = std::max(0.0f, std::min(1.0f, minConfidence));
+    logDebugInfo("Minimum confidence set to: " + std::to_string(m_minConfidence), 2);
 }
 
 void GestureRecognizer::setGestureThreshold(GestureType type, float threshold) {
@@ -71,7 +61,7 @@ void GestureRecognizer::setGestureThreshold(GestureType type, float threshold) {
 
 float GestureRecognizer::getGestureThreshold(GestureType type) const {
     auto it = m_gestureThresholds.find(type);
-    return (it != m_gestureThresholds.end()) ? it->second : 0.7f;
+    return (it != m_gestureThresholds.end()) ? it->second : GestureConstants::DEFAULT_MIN_CONFIDENCE;
 }
 
 GestureResult GestureRecognizer::processSimulatedPoints(
@@ -105,7 +95,7 @@ GestureResult GestureRecognizer::processSimulatedPoints(
     }
     
     // Generate debug information
-    if (debugMode_) {
+    if (m_debugMode) {
         std::string info = "Test ID: " + testId + "\n";
         info += "Points: " + std::to_string(points.size()) + "\n";
         info += "Detected: " + std::to_string(static_cast<int>(result.type)) + "\n";
@@ -153,9 +143,10 @@ GestureResult GestureRecognizer::recognizeKhargail(const std::vector<cv::Point2f
     float straightness = distance / totalLength;
     
     // Check if it's a horizontal charge
-    if (straightness > 0.8f && std::abs(angle) < 30.0f) {
+    if (straightness > GestureConstants::SWIPE_STRAIGHTNESS_THRESHOLD && 
+        std::abs(angle) < GestureConstants::HORIZONTAL_ANGLE_THRESHOLD) {
         result.type = GestureType::KHARGAIL;
-        result.confidence = straightness * sensitivity_;
+        result.confidence = straightness * m_sensitivity;
         result.position = end;
         result.trajectory = points;
     }
@@ -188,9 +179,11 @@ GestureResult GestureRecognizer::recognizeFlammil(const std::vector<cv::Point2f>
     float straightness = distance / totalLength;
     
     // Check if it's a diagonal down-right swipe
-    if (straightness > 0.8f && angle > 30.0f && angle < 60.0f) {
+    if (straightness > GestureConstants::SWIPE_STRAIGHTNESS_THRESHOLD && 
+        angle > GestureConstants::FLAMMIL_ANGLE_MIN && 
+        angle < GestureConstants::FLAMMIL_ANGLE_MAX) {
         result.type = GestureType::FLAMMIL;
-        result.confidence = straightness * sensitivity_;
+        result.confidence = straightness * m_sensitivity;
         result.position = end;
         result.trajectory = points;
     }
@@ -237,13 +230,13 @@ GestureResult GestureRecognizer::recognizeStasai(
     float circularity = 1.0f / (1.0f + varRadius / (avgRadius * avgRadius));
     
     // Check if it's a circle
-    if (circularity > 0.7f) {
+    if (circularity > GestureConstants::CIRCULARITY_THRESHOLD) {
         result.type = GestureType::STASAI;
-        result.confidence = circularity * sensitivity_;
+        result.confidence = circularity * m_sensitivity;
         result.position = centroid;
         result.trajectory = points;
         
-        if (debugMode_) {
+        if (m_debugMode) {
             result.debugInfo = "Circularity: " + std::to_string(circularity) + 
                              "\nTest case: " + testCaseId;
         }
@@ -277,9 +270,11 @@ GestureResult GestureRecognizer::recognizeAnnihlat(const std::vector<cv::Point2f
     float straightness = distance / totalLength;
     
     // Check if it's an upward diagonal swipe
-    if (straightness > 0.8f && angle < -30.0f && angle > -60.0f) {
+    if (straightness > GestureConstants::SWIPE_STRAIGHTNESS_THRESHOLD && 
+        angle < GestureConstants::ANNIHLAT_ANGLE_MAX && 
+        angle > GestureConstants::ANNIHLAT_ANGLE_MIN) {
         result.type = GestureType::ANNIHLAT;
-        result.confidence = straightness * sensitivity_;
+        result.confidence = straightness * m_sensitivity;
         result.position = end;
         result.trajectory = points;
     }
@@ -319,8 +314,8 @@ std::vector<float> GestureRecognizer::normalizeVelocities(
 }
 
 void GestureRecognizer::logDebugInfo(const std::string& info, int level) {
-    if (debugMode_ && level <= debugLogLevel_) {
-        std::cout << "[GestureRecognizer Debug] " << info << std::endl;
+    if (m_debugMode && level <= m_debugLogLevel) {
+        std::cout << "[GestureRecognizer Debug L" << level << "] " << info << std::endl;
     }
 }
 
