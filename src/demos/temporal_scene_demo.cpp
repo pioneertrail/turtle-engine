@@ -14,7 +14,7 @@ using namespace TurtleEngine;
 class TemporalSceneDemo {
 private:
     Engine* engine;
-    Temporal::TemporalAnomalySystem temporalSystem;
+    TemporalAnomalySystem temporalSystem;
     bool running;
     
     // Scene objects
@@ -108,7 +108,7 @@ public:
             2.0f,                         // radius
             0.8f,                         // intensity
             5.0f,                         // duration
-            Temporal::AnomalyType::TIME_SLOW
+            AnomalyType::TIME_SLOW        // Updated to use the correct namespace
         );
         
         // Set up particle effects
@@ -162,11 +162,13 @@ public:
         for (auto& obj : objects) {
             // Calculate time dilation factor based on anomalies
             float timeFactor = 1.0f;
+            float strongestInfluence = 0.0f;
             if (obj.affectedByTime) {
                 for (const auto& anomaly : anomalies) {
                     float distance = glm::distance(obj.position, anomaly.position);
                     if (distance < anomaly.radius) {
                         float influence = 1.0f - (distance / anomaly.radius);
+                        strongestInfluence = std::max(strongestInfluence, influence);
                         
                         // Apply different effects based on anomaly type
                         if (anomaly.type == Temporal::AnomalyType::TIME_SLOW) {
@@ -190,11 +192,16 @@ public:
             
             // Add particles for objects affected by time anomalies
             if (obj.affectedByTime && timeFactor < 0.5f) {
-                // Emit temporal particles
+                // Calculate particle parameters based on time distortion intensity
+                float intensity = std::abs(timeFactor - 1.0f); // Proxy for effect strength
+                int count = static_cast<int>(5 + intensity * 10);
+                float life = 0.5f + intensity * 0.2f;
+                
+                // Emit temporal particles with dynamic parameters
                 engine->getParticleSystem()->emitParticles(
                     obj.position,                      // position
-                    5,                                 // count
-                    0.5f,                              // life
+                    count,                             // count - now scales with intensity
+                    life,                              // life - now scales with intensity
                     glm::vec4(0.0f, 0.5f, 1.0f, 0.3f)  // color
                 );
             }
@@ -233,7 +240,7 @@ public:
                 1.5f,
                 0.7f,
                 3.0f,
-                Temporal::AnomalyType::TIME_FAST
+                AnomalyType::TIME_FAST  // Updated to use the correct namespace
             );
             
             LOG_INFO("Created new temporal anomaly at ({}, 0, {})", x, z);
@@ -269,7 +276,7 @@ public:
             glm::vec4 anomalyColor;
             
             // Color based on anomaly type
-            if (anomaly.type == Temporal::AnomalyType::TIME_SLOW) {
+            if (anomaly.type == AnomalyType::TIME_SLOW) {  // Updated to use the correct namespace
                 anomalyColor = glm::vec4(0.0f, 0.5f, 1.0f, 0.3f); // Blue for slow
             } else {
                 anomalyColor = glm::vec4(1.0f, 0.5f, 0.0f, 0.3f); // Orange for fast

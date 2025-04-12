@@ -9,6 +9,7 @@ TurtleEngine is a custom game engine featuring a temporal anomaly system, partic
 - **Logger Implementation**: Corrected include guards and namespace issues in the Logger module
 - **Temporal System Integration**: Successfully integrated temporal physics with particle effects
 - **Namespace Conflict Resolution**: Fixed namespace conflict between `TurtleEngine::TemporalAnomaly` and `TurtleEngine::Temporal::TemporalAnomaly` by properly restoring the `Temporal` namespace in all temporal system components
+- **Particle Enhancement**: Improved visual feedback by dynamically scaling particle count and lifespan based on temporal distortion intensity
 
 ## Project Structure
 ```
@@ -151,6 +152,11 @@ The Logger system is instrumental in debugging issues:
 - The temporal system and particle effects are closely integrated - modifications to one may affect the other
 - When creating new components, follow the established pattern of including `GlIncludes.hpp` first in implementation files
 - The Logger system provides detailed output for debugging - check console logs when troubleshooting
+
+### Namespace Guidelines
+- All temporal system components should reside in `TurtleEngine::Temporal` to maintain consistency
+- Avoid direct use of `TurtleEngine` for temporal classes to prevent conflicts with other engine modules
+- When referencing temporal components in demo code, use the fully qualified name (e.g., `Temporal::AnomalyType::TIME_SLOW`) or add a `using namespace TurtleEngine::Temporal` directive
 
 ## Future Improvements
 Prioritized by implementation order:

@@ -62,6 +62,9 @@ Thumbs.db
 
 # Documentation
 docs/
+!docs/*.md
+!docs/project/
+!docs/technical/
 html/
 latex/
 xml/
